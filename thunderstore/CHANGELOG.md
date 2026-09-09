@@ -1,5 +1,10 @@
 # Changelog — Swmarly Valheim Networking
 
+## 0.1.2 — safer defaults
+
+- Shared server-side map synchronization is now disabled by default.
+- The optional map self-test is also disabled by default.
+
 ## 0.1.1 — compatibility and safety pass
 
 - Fail closed on unknown game builds and detected overlapping networking/map mods.
