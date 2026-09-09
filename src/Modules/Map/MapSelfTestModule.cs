@@ -20,7 +20,7 @@ namespace SmoothServer.Map
         public override string Name => "MapSelfTest";
         public override ModuleSide Side => ModuleSide.Server;
         public override string Section => "MapSelfTest";
-        public override bool DefaultEnabled => true;
+        public override bool DefaultEnabled => false;
         protected override string EnabledDescription =>
             "Run the SharedMap store unit tests at startup and log one PASS/FAIL line.";
 
