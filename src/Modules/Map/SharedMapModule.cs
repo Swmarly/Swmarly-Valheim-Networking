@@ -41,6 +41,7 @@ namespace SmoothServer.Map
         public override string Name => "SharedMap";
         public override ModuleSide Side => ModuleSide.Both;
         public override string Section => "Map";
+        public override bool DefaultEnabled => false;
 
         internal const string RpcHello = "SS_MapHello";
         internal const string RpcFull = "SS_MapFull";
