@@ -1,0 +1,18 @@
+# Thunderstore CLI (tcli) config. Verified 2026-09-06 against the tcli wiki: [general]/[publish] keys
+# (repository, communities, categories) are read by `tcli publish`; namespace/name/version are passed
+# explicitly by release.yml. Categories are left unset on purpose — set them on the Thunderstore
+# website after the first upload (editable any time; names are not).
+#
+# Thunderstore package metadata for Swmarly Valheim Networking.
+
+[package]
+namespace = "Swmarly"
+name = "SwmarlyValheimNetworking"
+
+[build]
+icon = "thunderstore/icon.png"
+readme = "thunderstore/README.md"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["valheim"]
