@@ -35,7 +35,7 @@ continuing with unverified IL.
 - Dedicated-server frame-rate control
 - Server-safe physics and WearNTear optimizations
 - Ownership-release tuning
-- Save-clone pre-sizing
+- Save-stall measurement (Valheim 1.0 owns save-clone sizing in vanilla)
 - Garbage-collection and asset-unload throttling
 - Headless render-mesh skip
 - Floating item/log diagnostics and optional cleanup
@@ -63,9 +63,9 @@ Install the package on the dedicated server in `BepInEx/plugins/SwmarlyValheimNe
 Players can join without installing the mod unless the server owner explicitly enables
 `[General] EnforceClientMod`.
 
-Do not install SmoothServer, ValheimTune, FiresGhettoNetworking, BetterNetworking, or
-Serverside Simulations alongside this plugin. They patch the same Valheim networking methods and
-will conflict with the merged implementation.
+Do not install SmoothServer, ValheimTune, FiresGhettoNetworking, BetterNetworking, ServerSideMap,
+or Serverside Simulations alongside this plugin. They patch the same Valheim networking/map
+methods and the merged plugin will fail closed when it detects one.
 
 The generated config is `BepInEx/config/Swmarly.ValheimNetworking.cfg`.
 

@@ -19,7 +19,8 @@ Unified server-first Valheim networking and performance tuning.
 Install `SwmarlyValheimNetworking.dll` and its bundled managed dependencies on the dedicated
 server under `BepInEx/plugins/SwmarlyValheimNetworking/`. Vanilla clients can join by default.
 
-Remove SmoothServer, ValheimTune, FiresGhettoNetworking, BetterNetworking, and Serverside
-Simulations before enabling this package. Those mods patch overlapping Valheim networking methods.
+Remove SmoothServer, ValheimTune, FiresGhettoNetworking, BetterNetworking, ServerSideMap, and
+Serverside Simulations before enabling this package. Those mods patch overlapping Valheim
+networking/map methods.
 
 Target build: Valheim 1.0.7 / network version 39 / BepInEx 5.4.2350.

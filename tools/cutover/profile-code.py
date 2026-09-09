@@ -42,7 +42,7 @@ import zipfile
 TS_PKG = "https://thunderstore.io/api/experimental/package/%s/%s/"
 TS_CREATE = "https://thunderstore.io/api/experimental/legacyprofile/create/"
 TS_GET = "https://thunderstore.io/api/experimental/legacyprofile/get/%s/"
-UA = "orion-valheim-cutover/1.0 (+https://github.com/MJensen01/SmoothServer)"
+UA = "swmarly-valheim-cutover/1.0 (+https://github.com/Swmarly/Swmarly-Valheim-Networking)"
 
 # The NEWWORLD profile, exactly. Order = the order r2modman shows them in.
 MODS = [
@@ -55,7 +55,7 @@ MODS = [
     "HugotheDwarf-Hugos_Armory",
     "Azumatt-Official_BepInEx_ConfigurationManager",
     "Nosferatu-NoVikingLeftBehind",
-    "Nosferatu-SmoothServer",
+    "Swmarly-SwmarlyValheimNetworking",
 ]
 
 

@@ -29,7 +29,8 @@ namespace SmoothServer
     ///   * measures the main-thread half of every save (prefix/postfix stopwatch on SaveWorld)
     ///     and the background half (Stopwatch handed to a postfix on SaveWorldThread), so the
     ///     stall is a number in the log rather than a guess;
-    ///   * pre-sizes the clone list from ZDOMan.m_objectsByID.Count (PreSizeClone, default on).
+    ///   * on older builds, pre-sized the clone list from ZDOMan.m_objectsByID.Count. Valheim 1.0
+    ///     now pre-sizes its chunk lists in vanilla, so this compatibility setting is inert there.
     ///
     /// Moving the clone itself off-thread is NOT safe: every other ZDO write on the main thread
     /// would race the walk of m_objectsBySector. That is left as future work behind a real design.
@@ -70,11 +71,11 @@ namespace SmoothServer
         public override void Configure(ConfigFile cfg)
         {
             EnabledCfg = cfg.Bind("AsyncSave", "Enabled", true,
-                "Measure the main-thread world-save stall and shrink it. Vanilla already writes the " +
-                "file on a background thread; the stall is ZDOMan.PrepareSave's ZDO clone.");
+                "Measure the main-thread world-save stall. Valheim already writes the file on a " +
+                "background thread; on 1.0 the remaining clone/list allocation is vanilla-owned.");
             _preSize = cfg.Bind("AsyncSave", "PreSizeClone", true,
-                "Pre-size ZDOMan.GetSaveClone()'s list from the live ZDO count instead of letting " +
-                "it grow from zero. Same output, no reallocation storm on the main thread.");
+                "Compatibility setting for pre-1.0 builds. Valheim 1.0 pre-sizes save chunks in " +
+                "vanilla, so this setting is ignored on 1.0 and measurement remains active.");
             _logStalls = cfg.Bind("AsyncSave", "LogStalls", true,
                 "Log one line per world save with the main-thread stall and the background-thread time.");
             _selfTestSeconds = cfg.Bind("AsyncSave", "SelfTestSeconds", 0f,

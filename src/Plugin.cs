@@ -28,7 +28,7 @@ namespace SmoothServer
     {
         public const string PluginGuid = "Swmarly.ValheimNetworking";
         public const string PluginName = "Swmarly Valheim Networking";
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "0.1.1";
 
         internal static ManualLogSource Log;
         internal static ConfigFile Cfg;
@@ -46,8 +46,15 @@ namespace SmoothServer
 
         internal static bool IsServerSide => RunningSide == ModuleSide.Server;
 
-        /// <summary>True when a legacy networking mod is loaded alongside us.</summary>
-        internal static bool BetterNetworkingPresent;
+        /// <summary>True when a legacy or overlapping networking/map mod is loaded alongside us.</summary>
+        internal static bool ConflictingNetworkingModPresent;
+
+        /// <summary>
+        /// Set by ValheimTuneBridge before feature modules are enabled. Unknown builds remain
+        /// vanilla when DisableOnUnknownBuild is on; this is intentionally false until the
+        /// bridge has positively checked the running game version.
+        /// </summary>
+        internal static bool ReplacementsAllowed;
 
         private Harmony _bootstrap;
         private static bool _summaryLogged;
@@ -120,10 +127,11 @@ namespace SmoothServer
                 catch (Exception e) { Log.LogWarning("[SteamSelfTest] failed: " + e); }
             }
 
-            BetterNetworkingPresent = DetectConflictingNetworkingMods();
-            if (BetterNetworkingPresent)
-                Log.LogWarning("A legacy networking mod is installed alongside Swmarly Valheim Networking. " +
-                               "The merged transport/compression modules will stay disabled until it is removed.");
+            ConflictingNetworkingModPresent = DetectConflictingNetworkingMods();
+            if (ConflictingNetworkingModPresent)
+                Log.LogWarning("A legacy or overlapping networking/map mod is installed alongside " +
+                               "Swmarly Valheim Networking. All optional patches will stay disabled " +
+                               "until the conflicting mod is removed.");
 
             // ValheimTune's server-side optimisations are hosted by this plugin. Its overlapping
             // SendZDOs/Steam/all-peer patches were deliberately not imported: SmoothServer's
@@ -136,7 +144,7 @@ namespace SmoothServer
 
             foreach (var m in Modules)
             {
-                try { m.Configure(Config); }
+                try { m.Configure(Config); m.AttachEnabledHandler(); }
                 catch (Exception e) { Log.LogError("[" + m.Name + "] config bind failed: " + e); }
             }
 
@@ -197,11 +205,13 @@ namespace SmoothServer
                 {
                     if (kv.Key == null || kv.Key.Equals(PluginGuid, StringComparison.OrdinalIgnoreCase)) continue;
                     string id = kv.Key;
-                    if (id.IndexOf("BetterNetworking", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    if (id.IndexOf("SmoothServer", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        id.IndexOf("BetterNetworking", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         id.IndexOf("FiresGhettoNetworking", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         id.IndexOf("VAGhettoNetworking", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         id.IndexOf("ValheimTune", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        id.IndexOf("ServersideSimulations", StringComparison.OrdinalIgnoreCase) >= 0)
+                        id.IndexOf("ServersideSimulations", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        id.IndexOf("ServerSideMap", StringComparison.OrdinalIgnoreCase) >= 0)
                         return true;
                 }
             }

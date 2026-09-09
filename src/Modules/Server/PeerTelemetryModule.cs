@@ -72,6 +72,7 @@ namespace SmoothServer
         private static float _sampleAcc;
         private static float _logAcc;
         private static int _steamIface;     // 0 = unknown, 1 = user, 2 = gameserver, -1 = none
+        private static float _ifaceRetryAt;
         private static bool _ifaceLogged;
         private static bool _qualityAbsent; // ZSteamSocket.GetConnectionQuality unusable on this build
 
@@ -250,7 +251,11 @@ namespace SmoothServer
             status = default(SteamNetConnectionRealTimeStatus_t);
             SteamNetConnectionRealTimeLaneStatus_t lanes = default(SteamNetConnectionRealTimeLaneStatus_t);
 
-            if (_steamIface == -1) return false;
+            if (_steamIface == -1)
+            {
+                if (Time.realtimeSinceStartup < _ifaceRetryAt) return false;
+                _steamIface = 0;
+            }
 
             // Probe the interface this build is compiled against first: game-server on a dedicated
             // server, user on a client. The other one throws rather than returning a bad EResult,
@@ -291,6 +296,12 @@ namespace SmoothServer
         private static void SetIface(int iface, string what)
         {
             _steamIface = iface;
+            if (iface == -1)
+            {
+                _ifaceRetryAt = Time.realtimeSinceStartup + 30f;
+                return;
+            }
+            _ifaceRetryAt = 0f;
             if (_ifaceLogged) return;
             _ifaceLogged = true;
             SmoothServerPlugin.Log.LogInfo("[PeerTelemetry] Steam real-time status source: " + what);

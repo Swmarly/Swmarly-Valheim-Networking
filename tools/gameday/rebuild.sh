@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# gameday step 3 — build both mods against a staged game build and report compile errors per project.
+# gameday step 3 — build the unified plugin against a staged game build and report compile errors.
 #
-#   rebuild.sh <label> [ProjectDir ...]      # default projects: NoVikingLeftBehind SmoothServer
+#   rebuild.sh <label> [ProjectDir ...]      # default project: SmoothServer (unified assembly)
 #
 # Uses the repos' own src/Directory.Build.props override hooks (VALHEIM_MANAGED /
 # VALHEIM_BEPINEX_CORE env vars -> ValheimManagedDir / BepInExCoreDir), so nothing in the repo
@@ -16,19 +16,20 @@ LABEL="${1:-}"; shift || true
 [ -d "$(managed_dir "$LABEL")" ] || die "label '$LABEL' not staged — run fetch-build.sh first"
 [ -d "$(label_dir "$LABEL")/BepInEx/core" ] || die "no BepInEx/core staged under $(label_dir "$LABEL")"
 
-PROJS=("$@"); [ ${#PROJS[@]} -gt 0 ] || PROJS=(NoVikingLeftBehind SmoothServer)
+PROJS=("$@"); [ ${#PROJS[@]} -gt 0 ] || PROJS=(SmoothServer)
 timer_start
 say "rebuild against '$LABEL'  ($(cat "$(label_dir "$LABEL")/VERSION" 2>/dev/null || echo 'version unknown'))"
 
 declare -A STATUS ERRC
 for P in "${PROJS[@]}"; do
   D="$LAB/src/$P"; [ -d "$D" ] || { STATUS[$P]="NO SOURCE"; ERRC[$P]=0; continue; }
+  ARTIFACT="$P.dll"; [ "$P" = "SmoothServer" ] && ARTIFACT="SwmarlyValheimNetworking.dll"
   LOG="$(label_dir "$LABEL")/build-$P.log"; guard_write "$LOG"
   info "building src/$P ..."
   # Delete the previous artifact and force a full rebuild: MSBuild's up-to-date check keys off
   # source timestamps, not the reference assemblies, so an incremental build against a NEW game
   # build can silently reuse the OLD compile and report a false green.
-  rm -f "$D/bin/$P.dll"
+  rm -f "$D/bin/$ARTIFACT"
   set +e
   sdk_run -- env \
       VALHEIM_MANAGED="/work/game/$LABEL/valheim_server_Data/Managed" \
@@ -57,5 +58,8 @@ for P in "${PROJS[@]}"; do
 done
 
 say "artifacts"
-for P in "${PROJS[@]}"; do ls -l "$LAB/src/$P/bin/$P.dll" 2>/dev/null | sed 's/^/   /' || info "$P: no DLL produced"; done
+for P in "${PROJS[@]}"; do
+  ARTIFACT="$P.dll"; [ "$P" = "SmoothServer" ] && ARTIFACT="SwmarlyValheimNetworking.dll"
+  ls -l "$LAB/src/$P/bin/$ARTIFACT" 2>/dev/null | sed 's/^/   /' || info "$P: no DLL produced"
+done
 timer_end "rebuild $LABEL"

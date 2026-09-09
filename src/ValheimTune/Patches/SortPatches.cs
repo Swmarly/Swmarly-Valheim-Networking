@@ -29,7 +29,12 @@ namespace ValheimTune.Patches
                 //   then by Type descending: Terrain, Solid, Prioritized, Default  (buckets 1..4)
                 //   within a bucket: distance - 1.5 * clamp(time since last sync to this peer, 0, 100); never synced = 100
                 bool flag = z.Type == ZDO.ObjectType.Prioritized && z.HasOwner() && z.GetOwner() != receiver;
-                int bucket = flag ? 0 : 1 + (3 - (int)z.Type);
+                int bucket;
+                if (flag) bucket = 0;
+                else if (z.Type == ZDO.ObjectType.Terrain) bucket = 1;
+                else if (z.Type == ZDO.ObjectType.Solid) bucket = 2;
+                else if (z.Type == ZDO.ObjectType.Prioritized) bucket = 3;
+                else bucket = 4;
                 float stale = 100f;
                 if (zdos.TryGetValue(z.m_uid, out var info)) stale = Mathf.Clamp(time - info.m_syncTime, 0f, 100f);
                 double sortValue = Vector3.Distance(z.GetPosition(), refPos) - stale * 1.5f;

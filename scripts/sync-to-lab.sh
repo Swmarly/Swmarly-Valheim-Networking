@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Push this repo's src/ tree to the box lab (shroom-pi:/opt/modlab/src/SmoothServer/), which
-# stays the build+test environment (see research/BUILD-LAB.md in the old combined repo) until
-# CI is proven out end-to-end.
+# Push this repo's unified plugin source tree to the box lab. The source project keeps its
+# historical SmoothServer directory name for build compatibility, but emits the single
+# SwmarlyValheimNetworking assembly.
 #
 # Because src/Directory.Build.props is the nearest such file to the .csproj, once synced it
 # is what the lab's own ./build.sh actually builds against (MSBuild uses the nearest

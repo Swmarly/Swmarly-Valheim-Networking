@@ -164,9 +164,12 @@ namespace SmoothServer.Net
             try
             {
                 ESteamNetworkingConfigDataType type;
-                SteamNetworkingUtils.GetConfigValue(key,
+                ESteamNetworkingGetConfigValueResult result = SteamNetworkingUtils.GetConfigValue(key,
                     ESteamNetworkingConfigScope.k_ESteamNetworkingConfig_Global, IntPtr.Zero,
                     out type, pin.AddrOfPinnedObject(), ref size);
+                if (result != ESteamNetworkingGetConfigValueResult.k_ESteamNetworkingGetConfigValue_OK &&
+                    result != ESteamNetworkingGetConfigValueResult.k_ESteamNetworkingGetConfigValue_OKInherited)
+                    return -1;
             }
             catch { return -1; }
             finally { pin.Free(); }
@@ -178,11 +181,10 @@ namespace SmoothServer.Net
             var pin = GCHandle.Alloc(value, GCHandleType.Pinned);
             try
             {
-                SteamNetworkingUtils.SetConfigValue(key,
+                return SteamNetworkingUtils.SetConfigValue(key,
                     ESteamNetworkingConfigScope.k_ESteamNetworkingConfig_Global, IntPtr.Zero,
                     ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
                     pin.AddrOfPinnedObject());
-                return true;
             }
             catch (Exception e)
             {

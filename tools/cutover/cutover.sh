@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # cutover.sh — swap a Valheim server's mod set from the 8 replaced third-party mods to
-# NoVikingLeftBehind + SmoothServer, in one guided, reversible run.
+# NoVikingLeftBehind + Swmarly Valheim Networking, in one guided, reversible run.
 #
 # DRY-RUN BY DEFAULT. Nothing on disk or in Docker is touched without --apply.
 #
@@ -19,7 +19,7 @@
 #   1. player check (StatsLog record, else the `Connections N` log line) — refuses if >0
 #   2. backup  -> <server-dir>/backups-cutover/<ts>/  (world, config/bepinex, compose, plugin list)
 #   3. park the 8 replaced plugin dirs from BOTH plugin dirs into that backup (moved, never deleted)
-#   4. install NoVikingLeftBehind/ + SmoothServer/ (whole release zips) into BOTH plugin dirs
+#   4. install NoVikingLeftBehind/ + SwmarlyValheimNetworking/ (whole release zips) into BOTH plugin dirs
 #   5. seed both .cfg files from the tuned NEWTEST cfgs, with test-only values reset
 #   6. docker compose restart, wait for `Game server connected`, print + check the proof lines
 #   7. print the VALHEIM-CONNECT.md block and the group message
@@ -30,15 +30,15 @@ LOCK=/var/lock/valheim-cutover.lock
 
 # ---------------------------------------------------------------- configuration
 NVLB_REPO="MJensen01/NoVikingLeftBehind"
-SS_REPO="MJensen01/SmoothServer"
+SS_REPO="Swmarly/Swmarly-Valheim-Networking"
 NVLB_PLUGIN_DIR="NoVikingLeftBehind"
-SS_PLUGIN_DIR="SmoothServer"
+SS_PLUGIN_DIR="SwmarlyValheimNetworking"
 NVLB_CFG="Nosferatu.NoVikingLeftBehind.cfg"
-SS_CFG="Nosferatu.SmoothServer.cfg"
+SS_CFG="Swmarly.ValheimNetworking.cfg"
 # Tuned reference configs (the values Matt has been playing with on NEWTEST).
 REF_CFG_DIR="/opt/valheim-test/config/bepinex"
 
-# The 8 mods NVLB + SmoothServer replace. Parked, never deleted.
+# The 8 mods NVLB + Swmarly replace. Parked, never deleted.
 RETIRE=(
   JuJuz1-SkillGainModifier
   Smoothbrain-SmartSkills
@@ -176,9 +176,9 @@ gh_latest() {  # <owner/repo> -> version without leading v
 [ "$NVLB_VER" = "latest" ] && NVLB_VER="$(gh_latest "$NVLB_REPO")"
 [ "$SS_VER"  = "latest" ] && SS_VER="$(gh_latest "$SS_REPO")"
 [ -n "$NVLB_VER" ] || die "could not resolve the latest NoVikingLeftBehind release (no network?) — pass --nvlb <ver>"
-[ -n "$SS_VER" ]  || die "could not resolve the latest SmoothServer release (no network?) — pass --ss <ver>"
+[ -n "$SS_VER" ]  || die "could not resolve the latest Swmarly Valheim Networking release (no network?) — pass --ss <ver>"
 NVLB_URL="https://github.com/$NVLB_REPO/releases/download/v$NVLB_VER/NoVikingLeftBehind-$NVLB_VER.zip"
-SS_URL="https://github.com/$SS_REPO/releases/download/v$SS_VER/SmoothServer-$SS_VER.zip"
+SS_URL="https://github.com/$SS_REPO/releases/download/v$SS_VER/SwmarlyValheimNetworking-$SS_VER.zip"
 
 # ---------------------------------------------------------------- plan
 echo "== $SELF plan =="
@@ -186,11 +186,11 @@ echo "server dir     : $SERVER_DIR"
 echo "container      : ${CONTAINER:-<not found>}   server/world: ${SERVER_NAME:-?} / ${WORLD_NAME:-?}"
 echo "plugin dirs    : $PLUG_CFG"
 echo "                 $PLUG_DATA  (image rsyncs config->data, never prunes: both sides get edited)"
-echo "install        : NoVikingLeftBehind $NVLB_VER   SmoothServer $SS_VER"
+echo "install        : NoVikingLeftBehind $NVLB_VER   Swmarly Valheim Networking $SS_VER"
 echo "                 $NVLB_URL"
 echo "                 $SS_URL"
 echo "cfg seed from  : $REF_CFG_DIR/{$NVLB_CFG,$SS_CFG}"
-echo "  SmoothServer : [Profiles] Profile = $SS_PROFILE ; [General] EnforceClientMod = $ENFORCE"
+echo "  Swmarly      : [Profiles] Profile = $SS_PROFILE ; [General] EnforceClientMod = $ENFORCE"
 echo "  NVLB         : [General] EnforceClientMod = true (always — it is the everyone-installs mod)"
 echo "  reset        : [Frontier] TierOverride=-1, [Playtime] MinGroupSize=3, every SelfTest*=false/0"
 echo "  [ServerKeys] : taken verbatim from the NEWTEST cfg (SkillGainRate etc.)"
@@ -202,7 +202,7 @@ step "current plugins (data side)";   ls -1 "$PLUG_DATA" 2>/dev/null
 
 step "shared-map carry-over"
 if [ -f "$WORLD_DIR/$WORLD_NAME.mod.serversidemap.explored" ]; then
-  echo "OK  $WORLD_DIR/$WORLD_NAME.mod.serversidemap.explored present — SmoothServer imports it on first boot"
+  echo "OK  $WORLD_DIR/$WORLD_NAME.mod.serversidemap.explored present — Swmarly imports it on first boot"
 else
   echo "!!  no $WORLD_NAME.mod.serversidemap.explored — nothing to import (group map exploration will start empty)"
 fi
@@ -240,7 +240,7 @@ DRY RUN — with --apply this would, in order:
      plugins-before-config.txt, plugins-before-data.txt
   3. MOVE the ${#RETIRE[@]} retired plugin dirs out of BOTH plugin dirs into <ts>/retired/{config,data}/
   4. unzip both releases into $PLUG_CFG/{$NVLB_PLUGIN_DIR,$SS_PLUGIN_DIR} and the same under $PLUG_DATA
-     (all files, incl. SmoothServer's 5 runtime DLLs)
+     (all files, including Swmarly's managed runtime DLLs)
   5. copy the two tuned cfgs from $REF_CFG_DIR, then set Profile=$SS_PROFILE, EnforceClientMod=$ENFORCE,
      TierOverride=-1, MinGroupSize=3, SelfTest*=off
   6. cd $SERVER_DIR && docker compose restart ; wait up to 300s for 'Game server connected'
@@ -257,7 +257,7 @@ exec 9>"$LOCK"; flock -w 300 9 || die "another cutover run holds $LOCK"
 TS="$(date -u +%Y%m%d-%H%M%S)"
 B="$BACKUP_ROOT/$TS"
 mkdir -p "$B/retired/config" "$B/retired/data"
-echo "$TS UTC — cutover of $SERVER_DIR to NVLB $NVLB_VER + SmoothServer $SS_VER (profile=$SS_PROFILE enforce=$ENFORCE)" > "$B/STAMP"
+echo "$TS UTC — cutover of $SERVER_DIR to NVLB $NVLB_VER + Swmarly $SS_VER (profile=$SS_PROFILE enforce=$ENFORCE)" > "$B/STAMP"
 
 step "1/7 backup -> $B"
 ls -1 "$PLUG_CFG" > "$B/plugins-before-config.txt" 2>/dev/null
@@ -276,7 +276,7 @@ for p in "${RETIRE[@]}"; do
   done
 done
 
-step "3/7 install NoVikingLeftBehind $NVLB_VER + SmoothServer $SS_VER"
+step "3/7 install NoVikingLeftBehind $NVLB_VER + Swmarly Valheim Networking $SS_VER"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 install_pkg() {  # <url> <plugin-dir-name>
   local url="$1" name="$2" z="$TMP/$2.zip" x="$TMP/$2"
@@ -342,7 +342,7 @@ LOG="$TMP/log.txt"; RAW="$TMP/raw.txt"
 tac "$RAW" | awk '{print} /Preloader started/{exit}' | tac > "$LOG"
 [ -s "$LOG" ] || cp "$RAW" "$LOG"
 echo "  -- module summaries --"
-grep -E 'NoVikingLeftBehind [0-9].* loaded, [0-9]+ modules|SmoothServer [0-9].* loaded, [0-9]+ modules' "$LOG" | tail -4 | sed 's/^/  /'
+grep -E 'NoVikingLeftBehind [0-9].* loaded, [0-9]+ modules|Swmarly Valheim Networking [0-9].* loaded, [0-9]+ modules' "$LOG" | tail -4 | sed 's/^/  /'
 echo "  -- ServerSync / Profiles / SharedMap --"
 grep -iE 'ServerSync|\[Profiles\]|\[SharedMap\]' "$LOG" | tail -12 | sed 's/^/  /'
 echo "  -- plugins now loaded --"
@@ -357,7 +357,7 @@ if [ -n "$BAD" ]; then
   echo "*** roll back with: $SELF $SERVER_DIR --rollback $TS --apply"
   exit 4
 fi
-NOK=$(grep -cE 'NoVikingLeftBehind [0-9].* loaded' "$LOG"); SOK=$(grep -cE 'SmoothServer [0-9].* loaded' "$LOG")
+NOK=$(grep -cE 'NoVikingLeftBehind [0-9].* loaded' "$LOG"); SOK=$(grep -cE 'Swmarly Valheim Networking [0-9].* loaded' "$LOG")
 [ "$NOK" -gt 0 ] && [ "$SOK" -gt 0 ] || { echo "*** one or both mods did not report a load summary — roll back with --rollback $TS --apply"; exit 4; }
 echo "  CLEAN: both mods loaded, no FAILED(/exception lines."
 
@@ -370,7 +370,7 @@ cat <<CONNECT
 | **Password** | \`$SERVER_PASS\` |
 | **Server name** | $SERVER_NAME (world $WORLD_NAME) |
 | **Steam branch** | **Betas = None** (live) |
-| **Mods** | r2modman profile **NEWWORLD** (import code from profile-code.py) — NoVikingLeftBehind $NVLB_VER + SmoothServer $SS_VER replace the 8 old mods |
+| **Mods** | r2modman profile **NEWWORLD** (import code from profile-code.py) — NoVikingLeftBehind $NVLB_VER + Swmarly Valheim Networking $SS_VER replace the 8 old mods |
 
 --- group message ---
 NEWWORLD is now on our own mods. In r2modman: Profiles -> Import/Update -> Import code -> paste
@@ -379,7 +379,7 @@ Steam -> Valheim -> Properties -> Betas = None. Same server, same characters, sa
 explored map carried over. Connect: $PUBIP:$SERVER_PORT, password $SERVER_PASS.
 Gone: SkillGainModifier, SmartSkills, AzuCraftyBoxes, ExtraSlots, ConditionalConfigSync,
 YamlDotNet, BetterNetworking, ServerSideMap — NoVikingLeftBehind $NVLB_VER does all of that now
-and SmoothServer $SS_VER does the networking + the shared map.
+and Swmarly Valheim Networking $SS_VER does the networking + the shared map.
 CONNECT
 
 echo

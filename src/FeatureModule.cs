@@ -65,6 +65,10 @@ namespace SmoothServer
         public string Status = "not-run";
         public bool Applied;
 
+        private string _guidPrefix;
+        private ModuleSide _runningSide;
+        private bool _enabledHandlerAttached;
+
         /// <summary>Config says on. Independent of whether the patches installed.</summary>
         public bool Enabled => EnabledCfg != null && EnabledCfg.Value;
 
@@ -102,6 +106,9 @@ namespace SmoothServer
 
         public void TryEnable(string guidPrefix, ModuleSide runningSide)
         {
+            _guidPrefix = guidPrefix;
+            _runningSide = runningSide;
+
             if (Side != ModuleSide.Both && Side != runningSide)
             {
                 Applied = false;
@@ -112,6 +119,24 @@ namespace SmoothServer
             if (EnabledCfg == null || !EnabledCfg.Value)
             {
                 Status = "disabled";
+                Applied = false;
+                return;
+            }
+
+            // The merged plugin is deliberately fail-closed around game updates and known
+            // networking-mod conflicts. Harmony can report a successful patch even when a
+            // changed method's runtime contract is no longer what the patch expects, so the
+            // global gate is checked before any module-specific patch is installed.
+            if (SmoothServerPlugin.ConflictingNetworkingModPresent)
+            {
+                Status = "disabled(conflict)";
+                Applied = false;
+                return;
+            }
+
+            if (!SmoothServerPlugin.ReplacementsAllowed)
+            {
+                Status = "disabled(unknown-build)";
                 Applied = false;
                 return;
             }
@@ -132,6 +157,34 @@ namespace SmoothServer
                 Log.LogError("[" + Name + "] FAILED to patch: " + e);
                 Disable();
             }
+        }
+
+        /// <summary>
+        /// Attach the lifecycle listener after Configure() has run. A few legacy modules bind
+        /// their Enabled entry themselves, so wiring this centrally makes live enable/disable
+        /// work for every module without relying on the binding style.
+        /// </summary>
+        internal void AttachEnabledHandler()
+        {
+            if (_enabledHandlerAttached || EnabledCfg == null) return;
+            _enabledHandlerAttached = true;
+            EnabledCfg.SettingChanged += (s, a) =>
+            {
+                try { HandleEnabledChanged(); }
+                catch (Exception e) { Log.LogError("[" + Name + "] Enabled lifecycle change failed: " + e); }
+            };
+        }
+
+        private void HandleEnabledChanged()
+        {
+            if (Enabled)
+            {
+                if (!Applied && _guidPrefix != null) TryEnable(_guidPrefix, _runningSide);
+                return;
+            }
+
+            if (Applied) Disable();
+            Status = "disabled";
         }
 
         // ---- to implement -------------------------------------------------------------

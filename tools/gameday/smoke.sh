@@ -71,9 +71,9 @@ COMPOSE
 [ -n "$WORLD_FROM" ] && { info "copying world from $WORLD_FROM"; rsync -a "$WORLD_FROM/" "$GD/config/worlds_local/"; }
 
 # ---------- plugins ----------
-rm -rf "$GD/config/bepinex/plugins"/{NoVikingLeftBehind,SmoothServer}
+rm -rf "$GD/config/bepinex/plugins"/{NoVikingLeftBehind,SwmarlyValheimNetworking}
 COPIED=()
-for P in NoVikingLeftBehind SmoothServer; do
+for P in NoVikingLeftBehind; do
   B="$LAB/src/$P/bin"
   if [ -f "$B/$P.dll" ]; then
     mkdir -p "$GD/config/bepinex/plugins/$P"
@@ -84,6 +84,14 @@ for P in NoVikingLeftBehind SmoothServer; do
     info "SKIP $P — no build output at $B/$P.dll (compile failed?)"
   fi
 done
+P="SwmarlyValheimNetworking"; B="$LAB/src/SmoothServer/bin"
+if [ -f "$B/$P.dll" ]; then
+  mkdir -p "$GD/config/bepinex/plugins/$P"
+  cp "$B"/*.dll "$GD/config/bepinex/plugins/$P/"
+  COPIED+=("$P ($(ls "$GD/config/bepinex/plugins/$P" | wc -l) dll)")
+else
+  info "SKIP $P — no build output at $B/$P.dll (compile failed?)"
+fi
 # Extra plugin folders to include as-is, e.g. the LAST-GOOD build of a mod whose rebuild failed.
 # This is the realistic day-one mix: some mods rebuilt, some still shipping yesterday's DLL.
 for X in ${EXTRA_PLUGIN_DIRS:-}; do
@@ -96,7 +104,7 @@ done
 info "plugins: ${COPIED[*]}"
 
 # also drop stale copies the image keeps inside the game volume
-rm -rf "$GD/data/bepinex/BepInEx/plugins"/{NoVikingLeftBehind,SmoothServer} 2>/dev/null || true
+rm -rf "$GD/data/bepinex/BepInEx/plugins"/{NoVikingLeftBehind,SwmarlyValheimNetworking} 2>/dev/null || true
 
 # ---------- boot ----------
 T0=$(date -u +%FT%TZ)
@@ -118,7 +126,7 @@ say "version / loader"
 grep -aoE "Valheim l?-?[0-9.]+ \(network version [0-9]+\)|BepInEx [0-9.]+ - valheim|Chainloader started|Chainloader startup complete|[0-9]+ plugins to load" "$LOGF" | sort -u | sed 's/^/   /'
 
 say "our plugins"
-grep -aE "NoVikingLeftBehind|SmoothServer" "$LOGF" | grep -aE "Loading|module summary|FAILED|OK|version" | sed 's/^/   /' | head -40
+grep -aE "NoVikingLeftBehind|Swmarly Valheim Networking|SwmarlyValheimNetworking" "$LOGF" | grep -aE "Loading|module summary|FAILED|OK|version" | sed 's/^/   /' | head -40
 
 set +e   # every grep below may legitimately find nothing; head closing a pipe trips pipefail
 

@@ -78,6 +78,18 @@ def build_one(mod, configuration):
             raise SystemExit(f"error: {src} missing — required for a Thunderstore package")
         shutil.copy(src, os.path.join(stage, fname))
 
+    # Keep the package self-describing. These notices cover the vendored ServerSync source and
+    # the managed runtime dependencies; users should not need to clone the source repository to
+    # inspect the licenses of the files they installed.
+    for fname in ("LICENSE", "THIRD_PARTY.md"):
+        src = os.path.join(REPO_ROOT, fname)
+        if os.path.exists(src):
+            shutil.copy(src, os.path.join(stage, fname))
+    vendor_dir = os.path.join(REPO_ROOT, "src", "Vendor")
+    for fname in sorted(os.listdir(vendor_dir)):
+        if fname.endswith("-LICENSE.txt"):
+            shutil.copy(os.path.join(vendor_dir, fname), os.path.join(stage, fname))
+
     os.makedirs(DIST, exist_ok=True)
     out_path = os.path.join(DIST, f"{name}-{version}.zip")
     if os.path.exists(out_path):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """cfg.py -- read/write BepInEx cfg settings for NoVikingLeftBehind (nvlb) and
-SmoothServer (ss) on a Valheim server, with live-reload confirmation.
+Swmarly Valheim Networking (ss) on a Valheim server, with live-reload confirmation.
 
 Stdlib only (python3). Lives on the box at /opt/modlab/tools/cfg.py.
 
@@ -15,7 +15,7 @@ Usage:
   cfg.py status [--server test|live]
   cfg.py search <mod> <text>
 
-<mod> is "nvlb" (NoVikingLeftBehind) or "ss" (SmoothServer), or a few aliases.
+<mod> is "nvlb" (NoVikingLeftBehind) or "ss" (Swmarly Valheim Networking), or a few aliases.
 --server defaults to "test" everywhere. "live" points at the frozen NEWWORLD
 server (/opt/valheim2, container valheim-fresh) -- supported as a target but
 nothing here restarts it, and callers should not use --server live until the
@@ -46,9 +46,9 @@ MODS = {
         "names": ("nvlb", "novikingleftbehind", "no-viking-left-behind"),
     },
     "ss": {
-        "file": "Nosferatu.SmoothServer.cfg",
-        "display": "SmoothServer",
-        "names": ("ss", "smoothserver", "smooth-server"),
+        "file": "Swmarly.ValheimNetworking.cfg",
+        "display": "Swmarly Valheim Networking",
+        "names": ("ss", "swmarly", "swmarly-valheim-networking", "smoothserver", "smooth-server"),
     },
 }
 
@@ -57,8 +57,8 @@ MODS = {
 RESTART_KEYS = {
     # (section, key) -- None section means "any section" (Enabled is repeated
     # in every module's own section).
-    (None, "Enabled"): "Enabled toggles install Harmony patches at plugin Awake; "
-                        "turning a module OFF works live, turning it back ON needs a restart",
+    (None, "Enabled"): "Enabled toggles a module's Harmony patches live; the module is re-applied "
+                        "when turned back on if the compatibility gate still allows it",
     ("General", "Mode"): "Mode is read once at Awake (machine-local)",
     ("StatsLog", "Dir"): "StatsLog.Dir is read once at Awake, not hot-reloadable",
 }
@@ -503,7 +503,7 @@ PRESETS = {"fastlink": "FastLink", "default": "Default", "custom": "Custom"}
 
 
 def cmd_preset(args):
-    """Set [Profiles] Profile -- SmoothServer 0.4.0's whole-mod tuning preset.
+    """Set [Profiles] Profile -- the unified mod's whole-mod tuning preset.
 
     Thin wrapper over `set`: the plugin does the work (it rewrites the keys the
     profile owns and logs the applied set), so there is nothing to do here but
@@ -623,7 +623,7 @@ def cmd_search(args):
 
 def build_parser():
     p = argparse.ArgumentParser(prog="cfg.py",
-                                 description="Read/write NVLB + SmoothServer BepInEx config live.")
+                                 description="Read/write NVLB + Swmarly Valheim Networking BepInEx config live.")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("list", help="list sections, or keys in a section")
@@ -649,7 +649,7 @@ def build_parser():
     sp.add_argument("--dry-run", action="store_true")
     sp.set_defaults(func=cmd_set)
 
-    sp = sub.add_parser("preset", help="set the whole-mod tuning profile (SmoothServer)")
+    sp = sub.add_parser("preset", help="set the whole-mod tuning profile (Swmarly Valheim Networking)")
     sp.add_argument("mod")
     sp.add_argument("name", help="fastlink | default | custom")
     sp.add_argument("--server", default="test", choices=["test", "live"])

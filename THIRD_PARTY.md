@@ -38,7 +38,7 @@
 - Source: https://github.com/oleg-st/ZstdSharp, NuGet `ZstdSharp.Port` 0.6.4
 - License: **MIT**
 - A pure-managed C# port of zstd — no native library, works under Unity's Mono. Shipped as
-  `ZstdSharp.dll` next to `SmoothServer.dll`, together with its net472 dependencies
+  `ZstdSharp.dll` next to `SwmarlyValheimNetworking.dll`, together with its net472 dependencies
   (`System.Memory`, `System.Buffers`, `System.Numerics.Vectors`,
   `System.Runtime.CompilerServices.Unsafe` — Microsoft, MIT), none of which ship with Valheim
   or BepInEx.
@@ -48,7 +48,7 @@
 - Author: **Mydayyy**
 - Source: https://github.com/Mydayyy/Valheim-ServerSideMap
 - License: dual **MIT / Unlicense**
-- SmoothServer's `SharedMap` module replaces this mod. No source is copied, but two things are
+- Swmarly Valheim Networking's `SharedMap` module replaces this mod. No source is copied, but two things are
   taken from it and are credited here: (a) the *persistence file layout* of
   `<world>.mod.serversidemap.explored`, which `SharedMap`'s one-shot `ImportServerSideMapFile`
   migration parses so existing worlds keep their explored map; and (b) the merge strategy of
@@ -64,20 +64,14 @@
 - Author: **CW_Jesse** (CW-Jesse)
 - Source: https://github.com/CW-Jesse/valheim-betternetworking
 - License: MIT
-- SmoothServer's `SendCadence`/`SendBudget`/`CreateBudget` modules address the same class of
+- Swmarly Valheim Networking's `SendCadence`/`SendBudget`/`CreateBudget` modules address the same class of
   problem (ZDO send-rate/throughput) as BetterNetworking's "Update Rate" and Steamworks
   send-rate tuning, implemented independently (Harmony prefix/transpiler against the
-  0.221.12 decompile). No BetterNetworking *source* is included in this repository; its two
-  trained zstd dictionaries are bundled as data — see "Vendored / bundled" above.
-- **Incompatible with SmoothServer's `Compression` module.** Both wrap `ZSteamSocket`'s send
-  queue and cannot coexist; SmoothServer detects BetterNetworking in the BepInEx chainloader and
-  refuses to install its own compression patches (a loud `FAILED(...)` line in the module
-  summary) rather than declaring a hard `BepInIncompatibility`, which would stop the whole
-  plugin loading mid-rollout. Uninstall BetterNetworking to use SmoothServer compression.
-- Note: while SmoothServer's `SendCadence` module is enabled, BetterNetworking's own "Update Rate"
-  option becomes inert (SmoothServer's patch runs at higher Harmony priority and returns before
-  BetterNetworking's runs) — its Steamworks send-rate patch is unaffected and still applies.
-  Server owners running both should be aware of this overlap.
+  0.221.12 decompile). No BetterNetworking *source* or dictionary data is included; this release
+  uses plain zstd and retains the config switch for future bundled dictionaries.
+- **Incompatible with Swmarly Valheim Networking.** Both wrap `ZSteamSocket`'s send queue and
+  cannot coexist. The merged plugin detects BetterNetworking in the BepInEx chainloader and
+  disables all optional patches until it is removed.
 
 ### Serverside Simulations
 
@@ -126,7 +120,7 @@
 
 ## Runtime dependency (not bundled)
 
-- **BepInEx** / **BepInExPack_Valheim** (denikson), 5.4.2333 — LGPL-2.1 (BepInEx core). Not
+- **BepInEx** / **BepInExPack_Valheim** (denikson), 5.4.2350 — LGPL-2.1 (BepInEx core). Not
   distributed with this mod; required separately (see the Thunderstore dependency in
   `thunderstore/manifest.json`).
 - **Harmony (Lib.Harmony / 0Harmony)** — MIT, distributed as part of BepInEx, referenced but

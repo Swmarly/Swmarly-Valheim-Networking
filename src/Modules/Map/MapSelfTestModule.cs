@@ -84,7 +84,8 @@ namespace SmoothServer.Map
 
                 // --- persistence round trip ---
                 full.Pins.Add(new SharedPin { Name = "Silver", Pos = new Vector3(1f, 2f, 3f), Type = 3, Checked = true, OwnerId = 7 });
-                var tmpFile = Path.Combine(Path.GetTempPath(), "smoothserver-selftest.map");
+                var tmpFile = Path.Combine(Path.GetTempPath(),
+                    "swmarly-valheim-networking-selftest-" + Guid.NewGuid().ToString("N") + ".map");
                 full.SaveTo(tmpFile);
                 long onDisk = new FileInfo(tmpFile).Length;
                 var back = MapStore.LoadFrom(tmpFile);

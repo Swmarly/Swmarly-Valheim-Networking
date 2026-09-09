@@ -87,11 +87,19 @@ namespace SmoothServer
             }
 
             __instance.m_sendTimer += dt;
-            if (__instance.m_sendTimer >= 1f / SendHz)
+            float interval = 1f / SendHz;
+            if (__instance.m_sendTimer >= interval)
             {
-                __instance.m_sendTimer = 0f;
+                __instance.m_sendTimer -= interval;
+                if (__instance.m_sendTimer > interval * 4f) __instance.m_sendTimer = 0f;
                 for (int i = 0; i < peers.Count; i++)
-                    __instance.SendZDOs(peers[i], false);
+                {
+                    try { __instance.SendZDOs(peers[i], false); }
+                    catch (Exception e)
+                    {
+                        SmoothServerPlugin.Log.LogWarning("[SendCadence] peer send failed: " + e.Message);
+                    }
+                }
             }
 
             // vanilla's round-robin cursor stays parked so nothing else half-drives it

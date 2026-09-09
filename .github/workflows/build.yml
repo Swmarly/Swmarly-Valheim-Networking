@@ -60,7 +60,7 @@ jobs:
           # so SharedMap cannot even call it without this on the reference path.
           cp "$MANAGED"/Splatform.dll lib/
 
-          curl -sL "https://thunderstore.io/package/download/denikson/BepInExPack_Valheim/5.4.2333/" -o bie.zip
+          curl -sL "https://thunderstore.io/package/download/denikson/BepInExPack_Valheim/5.4.2350/" -o bie.zip
           unzip -q bie.zip -d bie
           cp bie/BepInExPack_Valheim/BepInEx/core/{BepInEx,0Harmony,BepInEx.Harmony,Mono.Cecil}.dll lib/
 

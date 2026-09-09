@@ -1,5 +1,12 @@
 # Changelog — Swmarly Valheim Networking
 
+## 0.1.1 — compatibility and safety pass
+
+- Fail closed on unknown game builds and detected overlapping networking/map mods.
+- Added live module enable/disable lifecycle handling.
+- Hardened compression handshakes, malformed-frame handling, shared-map validation, and map saves.
+- Fixed package license notices and updated the BepInEx dependency to 5.4.2350.
+
 ## 0.1.0 — Valheim 1.0.7 / network version 39
 
 - Initial unified release for Valheim 1.0.7.
