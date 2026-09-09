@@ -28,7 +28,7 @@ namespace SmoothServer
     {
         public const string PluginGuid = "Swmarly.ValheimNetworking";
         public const string PluginName = "Swmarly Valheim Networking";
-        public const string PluginVersion = "0.1.1";
+        public const string PluginVersion = "0.1.2";
 
         internal static ManualLogSource Log;
         internal static ConfigFile Cfg;
