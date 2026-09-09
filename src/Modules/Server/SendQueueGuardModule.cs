@@ -32,8 +32,9 @@ namespace SmoothServer
     ///   * <b>prefix</b> - while a socket is inside its back-off window, skip vanilla's drain
     ///     entirely (return false). That is what kills the per-frame log flood: vanilla cannot log
     ///     "Failed to send data" if it does not run. Also enforces the optional MaxQueuedBytes cap.
-    ///   * <b>finalizer</b> - swallows any exception out of the interop (it never reaches ZRpc /
-    ///     ZDOMan) and applies the back-off. With no exception, progress is measured by
+    ///   * <b>finalizer</b> - swallows known Steam send-limit/interop exceptions (they never reach
+    ///     ZRpc/ZDOMan) and applies the back-off. Unexpected programming exceptions are returned
+    ///     to Harmony so they remain visible instead of being silently corrupted. With no exception, progress is measured by
     ///     <c>m_totalSent</c>: unchanged across a call that started with a non-empty queue means
     ///     Steam refused every package, so we back off the same way.
     /// One log line per socket per failure *episode* instead of one per attempt, either way.
@@ -210,7 +211,7 @@ namespace SmoothServer
                 if (__exception != null)
                 {
                     Fail(st, __instance, now, "send threw: " + __exception.Message);
-                    return null;            // never propagate
+                    return IsRecoverableSendException(__exception) ? null : __exception;
                 }
 
                 if (__state == NoCheck) return null;
@@ -240,6 +241,21 @@ namespace SmoothServer
             catch { /* a guard must not be able to fail the send */ }
 
             return null;
+        }
+
+        private static bool IsRecoverableSendException(Exception e)
+        {
+            for (var current = e; current != null; current = current.InnerException)
+            {
+                string message = current.Message ?? "";
+                if (message.IndexOf("steam", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("eresult", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("sendmessage", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("limitexceeded", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    message.IndexOf("invalidparam", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+            return false;
         }
 
         private static void Fail(GuardState st, ZSteamSocket s, float now, string reason)

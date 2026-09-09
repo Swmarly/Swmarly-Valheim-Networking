@@ -1,7 +1,9 @@
 # Modules
 
 The plugin discovers its modules at startup and applies only the side-appropriate features.
-All replacement patches are guarded by the Valheim 1.0.7/network 39 compatibility gate.
+All optional modules and bridge patches are guarded by the Valheim 1.0.7/network 39 compatibility
+gate. When the build is unknown, the plugin remains loaded for diagnostics/config visibility but
+does not install optional Harmony/runtime features.
 
 | Area | Selected implementation | Notes |
 | --- | --- | --- |
@@ -10,7 +12,7 @@ All replacement patches are guarded by the Valheim 1.0.7/network 39 compatibilit
 | Candidate prioritization | ValheimTune | Top-K selection replaces a full sort only when enabled and only on the server. |
 | Receive protection | ValheimTune | Optional per-peer packet cap prevents one busy connection monopolising a frame. |
 | Transport compression | Unified implementation | Explicit frame tags, negotiated dictionary hash, vanilla-peer fallback, and double-compression protection. |
-| Server simulation | SmoothServer/VPO-derived | WearNTear, ownership-release, save-clone, GC, render-mesh, and frame-budget safeguards. |
+| Server simulation | SmoothServer/VPO-derived | WearNTear, ownership-release, save measurement, GC, render-mesh, and frame-budget safeguards. |
 | Client presentation | SmoothServer | Optional client send budget, shared map, interpolation, and prediction controls. |
 | Diagnostics | Unified bridge | Persistent stats plus ValheimTune sync/receive/dirty-set measurements. |
 

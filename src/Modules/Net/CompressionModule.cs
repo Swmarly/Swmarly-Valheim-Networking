@@ -90,6 +90,7 @@ namespace SmoothServer.Net
         private static Decompressor _dSmall, _dBig;
         private static int _dictHash;
         private static bool _codecsReady;
+        private static bool _dictionariesAvailable;
 
         // ---- per-socket state ------------------------------------------------------------
 
@@ -102,6 +103,7 @@ namespace SmoothServer.Net
             public bool SentReady;
             public int TheirProto;
             public int TheirDictHash;
+            public bool TheirEnabled;
             // byte[] instances we have already framed and left in m_sendQueue. Reference
             // identity (byte[] does not override Equals), so a failed send cannot double-frame.
             public readonly HashSet<byte[]> Framed = new HashSet<byte[]>();
@@ -144,22 +146,18 @@ namespace SmoothServer.Net
                 "zstd compression level (1-9). 1 is what BetterNetworking used and is the right " +
                 "answer for a real-time transport: almost all of the ratio, almost none of the CPU.");
             _useBigDict = BindSynced("UseBigDictionary", false,
-                "Compress with the 512 KB trained dictionary instead of the 110 KB one. Slightly " +
-                "better ratio, 512 KB more resident memory per process. Both dictionaries are always " +
-                "loaded for DEcompression, so peers may disagree on this without any loss of " +
-                "compatibility - the frame tag says which one each message used.");
+                "Prefer the large trained dictionary when bundled dictionary resources are present. " +
+                "This release ships plain zstd codecs because the training corpus is not distributed; " +
+                "the setting is retained for config compatibility and is ignored until dictionaries " +
+                "are bundled.");
         }
 
         protected override void ApplyPatches()
         {
-            if (SmoothServerPlugin.BetterNetworkingPresent)
-                throw new Exception("BetterNetworking is installed - it wraps the same ZSteamSocket " +
-                                    "send queue and the two cannot coexist. Uninstall BetterNetworking.");
-
             MinBytes = Math.Max(0, _minBytes.Value);
-            SendTag = _useBigDict.Value ? TagBig : TagSmall;
 
             InitCodecs(Math.Max(1, Math.Min(9, _level.Value)));
+            SendTag = _useBigDict.Value && _dictionariesAvailable ? TagBig : TagSmall;
 
             var send = AccessTools.Method(typeof(ZSteamSocket), "SendQueuedPackages");
             if (send == null) throw new Exception("ZSteamSocket.SendQueuedPackages not found");
@@ -182,15 +180,26 @@ namespace SmoothServer.Net
         public override void Disable()
         {
             Active2 = false;
+            DisconnectFramedPeers();
             States.Clear();
+            FramedPeers = 0;
             base.Disable();
         }
 
         public override void OnConfigChanged(ConfigEntryBase entry)
         {
-            if (entry == EnabledCfg) { Active2 = Applied && Enabled; if (!Active2) States.Clear(); }
+            if (entry == EnabledCfg)
+            {
+                Active2 = Applied && Enabled;
+                if (!Active2)
+                {
+                    DisconnectFramedPeers();
+                    States.Clear();
+                    FramedPeers = 0;
+                }
+            }
             else if (entry == _minBytes) MinBytes = Math.Max(0, _minBytes.Value);
-            else if (entry == _useBigDict) SendTag = _useBigDict.Value ? TagBig : TagSmall;
+            else if (entry == _useBigDict) SendTag = _useBigDict.Value && _dictionariesAvailable ? TagBig : TagSmall;
             else if (entry == _level) InitCodecs(Math.Max(1, Math.Min(9, _level.Value)));
             else return;
             Log.LogInfo("[Compression] minBytes=" + MinBytes + " sendDict=" + DictName(SendTag) +
@@ -210,7 +219,8 @@ namespace SmoothServer.Net
 
         private static string DictName(byte tag)
         {
-            return tag == TagBig ? "big" : tag == TagSmall ? "small" : "none";
+            if (tag == TagBig) return _dictionariesAvailable ? "big" : "plain-zstd";
+            return tag == TagSmall ? (_dictionariesAvailable ? "small" : "plain-zstd") : "none";
         }
 
         private static byte[] LoadResource(string name)
@@ -234,6 +244,7 @@ namespace SmoothServer.Net
         {
             var small = LoadResource(ResSmall);
             var big = LoadResource(ResBig);
+            _dictionariesAvailable = small != null && big != null;
 
             _cSmall = new Compressor(level);
             _cBig = new Compressor(level);
@@ -244,6 +255,8 @@ namespace SmoothServer.Net
 
             _dictHash = unchecked(Fnv(small) * 31 + Fnv(big));
             _codecsReady = true;
+            if (!_dictionariesAvailable)
+                SendTag = TagSmall;
         }
 
         private static int Fnv(byte[] data)
@@ -336,7 +349,7 @@ namespace SmoothServer.Net
 
         private static byte[] Unframe(byte[] framed)
         {
-            if (framed.Length < 1) return framed;
+            if (framed == null || framed.Length < 1) throw new Exception("empty framed payload");
             byte tag = framed[0];
             var payload = new byte[framed.Length - 1];
             Buffer.BlockCopy(framed, 1, payload, 0, payload.Length);
@@ -403,13 +416,30 @@ namespace SmoothServer.Net
             }
             catch (Exception e)
             {
-                // Never throw on the receive path. A stream we cannot unframe means the peer
-                // disagrees with us about framing - stop framing this peer and say so loudly.
+                // Do not pass an undecoded frame into ZRpc. That would turn a framing error into
+                // arbitrary package parsing and is much harder to recover from than a clean peer
+                // disconnect. The next connection starts with a fresh handshake.
+                DisablePeer(__instance, st, "unframing failed: " + e.Message, true);
+                __result = null;
+            }
+        }
+
+        private static void DisablePeer(ZSteamSocket sock, PeerState st, string reason, bool disconnect)
+        {
+            if (st != null)
+            {
                 st.RecvFramed = false;
                 st.SendFramed = false;
-                Log.LogError("[Compression] unframing failed for " + __instance.GetHostName() +
-                             " - compression disabled for this peer: " + e.Message);
+                st.SentReady = false;
             }
+            RecountFramed();
+            try { Log.LogError("[Compression] " + sock.GetHostName() + " - " + reason); }
+            catch { Log.LogError("[Compression] peer framing disabled - " + reason); }
+
+            if (!disconnect) return;
+            var peer = PeerOf(sock);
+            try { if (peer != null && ZNet.instance != null) ZNet.instance.Disconnect(peer); }
+            catch (Exception e) { Log.LogWarning("[Compression] peer disconnect failed: " + e.Message); }
         }
 
         private static void DisconnectPrefix(ZNetPeer peer)
@@ -456,6 +486,34 @@ namespace SmoothServer.Net
             return peer != null ? peer.m_socket as ZSteamSocket : null;
         }
 
+        private static ZNetPeer PeerOf(ZSteamSocket socket)
+        {
+            var net = ZNet.instance;
+            if (net == null || socket == null) return null;
+            foreach (var peer in net.GetConnectedPeers())
+                if (peer != null && peer.m_socket == socket) return peer;
+            return null;
+        }
+
+        private static void DisconnectFramedPeers()
+        {
+            var net = ZNet.instance;
+            if (net == null) return;
+            var peers = new List<ZNetPeer>();
+            foreach (var peer in net.GetConnectedPeers())
+            {
+                var sock = peer != null ? peer.m_socket as ZSteamSocket : null;
+                PeerState state;
+                if (sock != null && States.TryGetValue(sock, out state) &&
+                    (state.SendFramed || state.RecvFramed)) peers.Add(peer);
+            }
+            foreach (var peer in peers)
+            {
+                try { net.Disconnect(peer); }
+                catch (Exception e) { Log.LogWarning("[Compression] disconnect while disabling failed: " + e.Message); }
+            }
+        }
+
         private static void SendCaps(long peerId)
         {
             var pkg = new ZPackage();
@@ -472,12 +530,22 @@ namespace SmoothServer.Net
             if (sock == null) return;                    // PlayFab peer, or gone
             var st = Get(sock, true);
 
-            int proto = pkg.ReadInt();
-            int dictHash = pkg.ReadInt();
-            int flags = pkg.ReadInt();
+            int proto, dictHash, flags;
+            try
+            {
+                proto = pkg.ReadInt();
+                dictHash = pkg.ReadInt();
+                flags = pkg.ReadInt();
+            }
+            catch (Exception e)
+            {
+                DisablePeer(sock, st, "malformed capability packet: " + e.Message, true);
+                return;
+            }
             st.CapsSeen = true;
             st.TheirProto = proto;
             st.TheirDictHash = dictHash;
+            st.TheirEnabled = flags != 0;
 
             bool compatible = proto == Proto && dictHash == _dictHash && flags != 0;
             if (!compatible)
@@ -486,6 +554,9 @@ namespace SmoothServer.Net
                                " dict=" + dictHash.ToString("x8") + " enabled=" + flags +
                                " (ours proto=" + Proto + " dict=" + _dictHash.ToString("x8") +
                                ") - staying uncompressed with this peer");
+                st.RecvFramed = false;
+                st.SendFramed = false;
+                st.SentReady = false;
                 if (!st.SentCaps) { st.SentCaps = true; SendCaps(sender); }
                 return;
             }
@@ -507,6 +578,12 @@ namespace SmoothServer.Net
             var sock = SocketOf(sender);
             if (sock == null) return;
             var st = Get(sock, true);
+            if (!st.CapsSeen || !st.TheirEnabled || st.TheirProto != Proto || st.TheirDictHash != _dictHash)
+            {
+                Log.LogWarning("[Compression] ignoring premature/incompatible ready from " + sender);
+                st.SendFramed = false;
+                return;
+            }
             if (st.SendFramed) return;
             st.SendFramed = true;
             RecountFramed();

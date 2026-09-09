@@ -28,24 +28,33 @@ namespace SmoothServer
 
         internal static void Initialize(ConfigFile config, ManualLogSource log)
         {
-            if (!SmoothServerPlugin.IsServerSide)
-            {
-                log.LogInfo("[ValheimTuneBridge] server-only optimisation patches skipped on the client");
-                return;
-            }
-
             try
             {
                 Cfg.Bind(config);
                 Compat.GameVersion = global::Version.CurrentVersion.ToString();
                 Compat.ReplacementsAllowed = !Cfg.DisableOnUnknownBuild.Value ||
                                              Compat.IsKnown(Compat.GameVersion, Cfg.KnownGoodBuilds.Value);
+                SmoothServerPlugin.ReplacementsAllowed = Compat.ReplacementsAllowed;
 
-                if (!Compat.ReplacementsAllowed)
+                if (SmoothServerPlugin.ConflictingNetworkingModPresent)
+                {
+                    SmoothServerPlugin.ReplacementsAllowed = false;
+                    log.LogWarning("[ValheimTuneBridge] overlapping mod detected; bridge patches disabled");
+                    return;
+                }
+
+                if (!SmoothServerPlugin.ReplacementsAllowed)
                 {
                     log.LogWarning("[ValheimTuneBridge] game " + Compat.GameVersion +
                                    " is not in KnownGoodBuilds (" + Cfg.KnownGoodBuilds.Value +
-                                   "); replacement patches will stay inactive");
+                                   "); all optional replacement patches will stay inactive");
+                    return;
+                }
+
+                if (!SmoothServerPlugin.IsServerSide)
+                {
+                    log.LogInfo("[ValheimTuneBridge] server-only optimisation patches skipped on the client");
+                    return;
                 }
 
                 _harmony = new Harmony(SmoothServerPlugin.PluginGuid + ".valheimtune");
@@ -75,6 +84,16 @@ namespace SmoothServer
                         // plugin from loading. The affected feature falls back to vanilla.
                         log.LogError("[ValheimTuneBridge] " + type.Name + " disabled: " + e.Message);
                     }
+                }
+
+                if (patched == 0)
+                {
+                    _harmony.UnpatchSelf();
+                    _harmony = null;
+                    _started = false;
+                    Active = false;
+                    log.LogWarning("[ValheimTuneBridge] no selected patches matched this build; bridge disabled");
+                    return;
                 }
 
                 _started = true;

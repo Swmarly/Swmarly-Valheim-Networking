@@ -55,6 +55,9 @@ namespace SmoothServer.Map
         /// <summary>Bytes of bitset per full-sync message (32 KB raw -> 16 messages at 2048^2).</summary>
         internal const int FullChunkBytes = 32 * 1024;
 
+        internal const int MaxMapSize = 4096;
+        internal const int MaxPins = 10000;
+
         public int MapSize { get; private set; }
         public byte[] Bits { get; private set; }
         public readonly List<SharedPin> Pins = new List<SharedPin>();
@@ -67,13 +70,30 @@ namespace SmoothServer.Map
 
         public void Resize(int mapSize)
         {
-            if (mapSize <= 0) throw new ArgumentException("mapSize must be positive");
+            if (!IsValidMapSize(mapSize))
+                throw new ArgumentException("mapSize must be between 1 and " + MaxMapSize);
             MapSize = mapSize;
             long pixels = (long)mapSize * mapSize;
             Bits = new byte[(pixels + 7) / 8];
         }
 
-        public int PixelCount { get { return MapSize * MapSize; } }
+        public int PixelCount { get { return MapSize <= 0 ? 0 : MapSize * MapSize; } }
+
+        internal static bool IsValidMapSize(int mapSize)
+        {
+            return mapSize > 0 && mapSize <= MaxMapSize;
+        }
+
+        internal static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        internal static bool IsValidPin(SharedPin pin)
+        {
+            return pin != null && (pin.Name ?? "").Length <= 256 &&
+                   IsFinite(pin.Pos.x) && IsFinite(pin.Pos.y) && IsFinite(pin.Pos.z);
+        }
 
         public bool Get(int index)
         {
@@ -146,16 +166,21 @@ namespace SmoothServer.Map
         {
             var inner = wire.ReadCompressedPackage();
             int size = inner.ReadInt();
+            if (!IsValidMapSize(size)) throw new Exception("invalid map size " + size);
             if (!Sized) Resize(size);
             if (size != MapSize) return null;
 
             int count = inner.ReadInt();
+            int maxChunks = (Bits.Length + ChunkBytes - 1) / ChunkBytes;
+            if (count < 0 || count > maxChunks) throw new Exception("invalid delta chunk count " + count);
             var added = new List<int>();
             for (int c = 0; c < count; c++)
             {
                 int chunk = inner.ReadInt();
+                if (chunk < 0 || chunk >= maxChunks) throw new Exception("invalid delta chunk " + chunk);
                 var buf = inner.ReadByteArray();
                 if (buf == null) continue;
+                if (buf.Length > ChunkBytes) throw new Exception("delta chunk is too large: " + buf.Length);
                 int baseByte = chunk * ChunkBytes;
                 for (int i = 0; i < buf.Length; i++)
                 {
@@ -188,6 +213,8 @@ namespace SmoothServer.Map
         /// </summary>
         public ZPackage EncodeFullChunk(int chunkIndex)
         {
+            if (Bits == null || chunkIndex < 0 || chunkIndex >= FullChunkCount)
+                throw new ArgumentOutOfRangeException("chunkIndex");
             int off = chunkIndex * FullChunkBytes;
             int len = Math.Min(FullChunkBytes, Bits.Length - off);
             var slice = new byte[Math.Max(0, len)];
@@ -209,21 +236,37 @@ namespace SmoothServer.Map
         public static bool DecodeFullChunk(ZPackage wire, out int mapSize, out int chunkIndex,
                                            out int chunkCount, out int byteOffset, out byte[] slice)
         {
-            var inner = wire.ReadCompressedPackage();
-            mapSize = inner.ReadInt();
-            chunkIndex = inner.ReadInt();
-            chunkCount = inner.ReadInt();
-            byteOffset = inner.ReadInt();
-            slice = inner.ReadByteArray();
-            return slice != null;
+            mapSize = chunkIndex = chunkCount = byteOffset = 0;
+            slice = null;
+            try
+            {
+                var inner = wire.ReadCompressedPackage();
+                mapSize = inner.ReadInt();
+                chunkIndex = inner.ReadInt();
+                chunkCount = inner.ReadInt();
+                byteOffset = inner.ReadInt();
+                slice = inner.ReadByteArray();
+                if (!IsValidMapSize(mapSize) || slice == null || chunkCount <= 0) return false;
+                int bytes = (int)(((long)mapSize * mapSize + 7) / 8);
+                int expectedChunks = (bytes + FullChunkBytes - 1) / FullChunkBytes;
+                if (chunkCount != expectedChunks || chunkIndex < 0 || chunkIndex >= chunkCount ||
+                    byteOffset != chunkIndex * FullChunkBytes || slice.Length > FullChunkBytes ||
+                    (long)byteOffset + slice.Length > bytes) return false;
+                return true;
+            }
+            catch { return false; }
         }
 
         // ---- persistence ---------------------------------------------------------------------
 
         public ZPackage Serialize()
         {
+            if (!Sized) throw new InvalidOperationException("cannot serialize an unsized map");
+            if (Pins.Count > MaxPins) throw new InvalidOperationException("too many map pins");
+            foreach (var pin in Pins)
+                if (!IsValidPin(pin)) throw new InvalidOperationException("invalid map pin");
             var inner = new ZPackage();
-            inner.Write(Bits ?? new byte[0]);
+            inner.Write(Bits);
             inner.Write(Pins.Count);
             foreach (var p in Pins)
             {
@@ -249,14 +292,17 @@ namespace SmoothServer.Map
             int version = pkg.ReadInt();
             if (version != Version) throw new Exception("unsupported map file version " + version);
             int mapSize = pkg.ReadInt();
+            if (!IsValidMapSize(mapSize)) throw new Exception("invalid map size " + mapSize);
 
             var store = new MapStore(mapSize);
             var inner = pkg.ReadCompressedPackage();
             var bits = inner.ReadByteArray();
-            if (bits != null && bits.Length == store.Bits.Length) store.Bits = bits;
-            else if (bits != null) Buffer.BlockCopy(bits, 0, store.Bits, 0, Math.Min(bits.Length, store.Bits.Length));
+            if (bits == null || bits.Length != store.Bits.Length)
+                throw new Exception("map bitset length mismatch");
+            store.Bits = bits;
 
             int pins = inner.ReadInt();
+            if (pins < 0 || pins > MaxPins) throw new Exception("invalid pin count " + pins);
             for (int i = 0; i < pins; i++)
             {
                 var p = new SharedPin();
@@ -266,6 +312,7 @@ namespace SmoothServer.Map
                 p.Type = inner.ReadInt();
                 p.Checked = inner.ReadBool();
                 p.OwnerId = inner.ReadLong();
+                if (!IsValidPin(p)) throw new Exception("invalid pin data");
                 store.Pins.Add(p);
             }
             return store;
@@ -278,8 +325,8 @@ namespace SmoothServer.Map
             var bytes = Serialize().GetArray();
             var tmp = path + ".tmp";
             File.WriteAllBytes(tmp, bytes);
-            if (File.Exists(path)) File.Delete(path);
-            File.Move(tmp, path);
+            if (File.Exists(path)) File.Replace(tmp, path, null);
+            else File.Move(tmp, path);
         }
 
         public static MapStore LoadFrom(string path)
@@ -303,7 +350,7 @@ namespace SmoothServer.Map
             var pkg = new ZPackage(raw);
             version = pkg.ReadInt();
             int mapSize = pkg.ReadInt();
-            if (mapSize <= 0 || (long)mapSize * mapSize > 64L * 1024 * 1024)
+            if (!IsValidMapSize(mapSize))
                 throw new Exception("implausible mapSize " + mapSize + " in ServerSideMap file");
 
             var store = new MapStore(mapSize);
@@ -316,6 +363,7 @@ namespace SmoothServer.Map
 
             int pinCount = 0;
             try { pinCount = pkg.ReadInt(); } catch { pinCount = 0; }
+            if (pinCount < 0 || pinCount > MaxPins) pinCount = 0;
             for (int i = 0; i < pinCount; i++)
             {
                 try
@@ -326,7 +374,7 @@ namespace SmoothServer.Map
                     p.Pos = new Vector3(x, y, z);
                     p.Type = pkg.ReadInt();
                     p.Checked = pkg.ReadBool();
-                    store.Pins.Add(p);
+                    if (IsValidPin(p)) store.Pins.Add(p);
                 }
                 catch { break; }
             }

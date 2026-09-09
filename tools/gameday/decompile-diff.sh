@@ -23,7 +23,7 @@ while [ $# -gt 0 ]; do
     *) die "unknown arg: $1";;
   esac
 done
-[ ${#SRCS[@]} -gt 0 ] || SRCS=("$LAB/src/NoVikingLeftBehind" "$LAB/src/SmoothServer")
+[ ${#SRCS[@]} -gt 0 ] || SRCS=("$LAB/src/SmoothServer")
 
 for L in "$OLD" "$NEW"; do
   [ -d "$(managed_dir "$L")" ] || die "label '$L' not staged — run fetch-build.sh $L ... first"

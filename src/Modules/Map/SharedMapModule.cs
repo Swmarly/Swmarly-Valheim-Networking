@@ -72,6 +72,7 @@ namespace SmoothServer.Map
         internal static string ImportSummary;
         private static readonly Dictionary<long, int> PendingFull = new Dictionary<long, int>();
         private static readonly Dictionary<long, int> PendingFullCount = new Dictionary<long, int>();
+        private static readonly HashSet<long> MapPeers = new HashSet<long>();
 
         // ---- client state -------------------------------------------------------------------
 
@@ -189,6 +190,9 @@ namespace SmoothServer.Map
         public override void Disable()
         {
             Active2 = false;
+            MapPeers.Clear();
+            PendingFull.Clear();
+            PendingFullCount.Clear();
             base.Disable();
         }
 
@@ -220,7 +224,7 @@ namespace SmoothServer.Map
                 var world = ZNet.World;
                 if (world == null) { Log.LogWarning("[SharedMap] no world at LoadWorld"); return; }
 
-                string worldName = world.m_name;
+                string worldName = SafeWorldName(world.m_name);
                 _storePath = Path.Combine(StoreDir, worldName + ".map");
 
                 if (File.Exists(_storePath))
@@ -265,6 +269,14 @@ namespace SmoothServer.Map
 
         private static bool _importValue = true;
 
+        private static string SafeWorldName(string raw)
+        {
+            string name = Path.GetFileName(raw ?? "world");
+            if (string.IsNullOrEmpty(name) || name == "." || name == "..") name = "world";
+            foreach (char c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+            return name;
+        }
+
         private static void SaveWorldPostfix()
         {
             if (!Active2) return;
@@ -295,6 +307,7 @@ namespace SmoothServer.Map
             PendingDelta.Clear();
             PendingFull.Clear();
             PendingFullCount.Clear();
+            MapPeers.Clear();
             TryRegisterRpcs();
         }
 
@@ -325,20 +338,32 @@ namespace SmoothServer.Map
         private static void OnHello(long sender, ZPackage pkg)
         {
             if (!Active2 || !ServerActive() || Store == null) return;
-            int mapSize = pkg.ReadInt();
-            if (mapSize <= 0) return;
+            int mapSize;
+            try { mapSize = pkg.ReadInt(); }
+            catch (Exception e) { Log.LogWarning("[SharedMap] malformed hello from " + sender + ": " + e.Message); return; }
+            if (!MapStore.IsValidMapSize(mapSize))
+            {
+                Log.LogWarning("[SharedMap] peer " + sender + " supplied invalid mapSize=" + mapSize);
+                return;
+            }
 
             if (!Store.Sized)
             {
-                Store.Resize(mapSize);
+                try { Store.Resize(mapSize); }
+                catch (Exception e) { Log.LogWarning("[SharedMap] could not adopt map size from " + sender + ": " + e.Message); return; }
                 Log.LogInfo("[SharedMap] adopted mapSize=" + mapSize + " from the first client");
             }
             if (mapSize != Store.MapSize)
             {
+                MapPeers.Remove(sender);
+                PendingFull.Remove(sender);
+                PendingFullCount.Remove(sender);
                 Log.LogWarning("[SharedMap] peer " + sender + " has mapSize=" + mapSize +
                                " but the store is " + Store.MapSize + " - not syncing this peer");
                 return;
             }
+
+            MapPeers.Add(sender);
 
             if (_shareExpl)
             {
@@ -354,6 +379,7 @@ namespace SmoothServer.Map
 
             if (ServerActive())
             {
+                if (!MapPeers.Contains(sender)) return;
                 if (Store == null || !Store.Sized) return;
                 List<int> added;
                 try { added = Store.MergeDelta(pkg); }
@@ -366,7 +392,7 @@ namespace SmoothServer.Map
                 if (net == null) return;
                 foreach (var peer in net.GetConnectedPeers())
                 {
-                    if (peer.m_uid == sender) continue;
+                    if (peer.m_uid == sender || !MapPeers.Contains(peer.m_uid)) continue;
                     ZRoutedRpc.instance.InvokeRoutedRPC(peer.m_uid, RpcDelta, wire);
                 }
                 return;
@@ -392,19 +418,26 @@ namespace SmoothServer.Map
         private static void OnPin(long sender, ZPackage pkg)
         {
             if (!Active2 || !_sharePinsV) return;
-            int op = pkg.ReadInt();
+            int op;
             var p = new SharedPin();
-            p.Name = pkg.ReadString();
-            p.Pos = new Vector3(pkg.ReadSingle(), pkg.ReadSingle(), pkg.ReadSingle());
-            p.Type = pkg.ReadInt();
-            p.Checked = pkg.ReadBool();
-            p.OwnerId = pkg.ReadLong();
+            try
+            {
+                op = pkg.ReadInt();
+                p.Name = pkg.ReadString();
+                p.Pos = new Vector3(pkg.ReadSingle(), pkg.ReadSingle(), pkg.ReadSingle());
+                p.Type = pkg.ReadInt();
+                p.Checked = pkg.ReadBool();
+                p.OwnerId = pkg.ReadLong();
+            }
+            catch (Exception e) { Log.LogWarning("[SharedMap] malformed pin from " + sender + ": " + e.Message); return; }
+
+            if ((op != 0 && op != 1) || !MapStore.IsValidPin(p)) return;
 
             if (!AllowedPinTypes.Contains(p.Type)) return;
 
             if (ServerActive())
             {
-                if (Store == null) return;
+                if (Store == null || !MapPeers.Contains(sender)) return;
                 bool changed = false;
                 if (op == 0)
                 {
@@ -422,7 +455,7 @@ namespace SmoothServer.Map
                 if (net == null) return;
                 foreach (var peer in net.GetConnectedPeers())
                 {
-                    if (peer.m_uid == sender) continue;
+                    if (peer.m_uid == sender || !MapPeers.Contains(peer.m_uid)) continue;
                     ZRoutedRpc.instance.InvokeRoutedRPC(peer.m_uid, RpcPin, EncodePin(op, p));
                 }
                 return;
@@ -533,6 +566,7 @@ namespace SmoothServer.Map
             if (!ClientActive()) return;
             var mm = Minimap.instance;
             if (mm == null) return;
+            if (x < 0 || y < 0 || x >= mm.m_textureSize || y >= mm.m_textureSize) return;
             PendingDelta.Add(y * mm.m_textureSize + x);
         }
 
@@ -570,6 +604,7 @@ namespace SmoothServer.Map
 
             if (ServerActive())
             {
+                PruneMapPeers();
                 // Drain one full-sync chunk per peer per tick: 32 KB of raw bits each, so even a
                 // fully explored 2048^2 map is 16 messages, comfortably under Steam's 512 KB cap.
                 if (PendingFull.Count == 0) return;
@@ -577,6 +612,7 @@ namespace SmoothServer.Map
                 var keys = new List<long>(PendingFull.Keys);
                 foreach (var uid in keys)
                 {
+                    if (!MapPeers.Contains(uid)) { done.Add(uid); continue; }
                     int idx = PendingFull[uid];
                     int count = PendingFullCount[uid];
                     if (Store == null || !Store.Sized || idx >= count) { done.Add(uid); continue; }
@@ -591,6 +627,7 @@ namespace SmoothServer.Map
                     }
                 }
                 foreach (var uid in done) { PendingFull.Remove(uid); PendingFullCount.Remove(uid); }
+                PruneMapPeers();
                 return;
             }
 
@@ -626,6 +663,18 @@ namespace SmoothServer.Map
             }
             catch (Exception e) { Log.LogWarning("[SharedMap] delta send failed: " + e.Message); }
             PendingDelta.Clear();
+        }
+
+        private static void PruneMapPeers()
+        {
+            var net = ZNet.instance;
+            if (net == null) { MapPeers.Clear(); PendingFull.Clear(); PendingFullCount.Clear(); return; }
+            var connected = new HashSet<long>();
+            foreach (var peer in net.GetConnectedPeers()) if (peer != null) connected.Add(peer.m_uid);
+            var dead = new List<long>();
+            foreach (var uid in MapPeers) if (!connected.Contains(uid)) dead.Add(uid);
+            foreach (var uid in dead) MapPeers.Remove(uid);
+            foreach (var uid in dead) { PendingFull.Remove(uid); PendingFullCount.Remove(uid); }
         }
     }
 }
