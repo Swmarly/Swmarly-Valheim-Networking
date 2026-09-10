@@ -1,7 +1,7 @@
 {
     "name": "SwmarlyValheimNetworking",
     "author": "Swmarly",
-    "version_number": "0.1.3",
+    "version_number": "0.1.4",
     "website_url": "https://github.com/Swmarly/Swmarly-Valheim-Networking",
     "description": "Unified Valheim networking and dedicated-server performance mod combining adaptive transport, dirty-set synchronization, compression, server tuning, and optional client smoothing.",
   "dependencies": [

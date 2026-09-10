@@ -31,6 +31,10 @@ namespace SmoothServer
             try
             {
                 Cfg.Bind(config);
+                // TargetPortal relies on vanilla ZDOMan.CreateSyncList behavior for its
+                // explicit ForceSendZDO portal advertisements and for portal-travel removal.
+                // Its compatibility guard is refreshed before the selected patches install.
+                TargetPortalCompat.Refresh(log);
                 Compat.GameVersion = global::Version.CurrentVersion.ToString();
                 Compat.ReplacementsAllowed = !Cfg.DisableOnUnknownBuild.Value ||
                                              Compat.IsKnown(Compat.GameVersion, Cfg.KnownGoodBuilds.Value);
@@ -136,6 +140,16 @@ namespace SmoothServer
 
         private static void DirtyWatchdog(float dt)
         {
+            if (TargetPortalCompat.IsLoaded)
+            {
+                // DirtyPatches intentionally stays on the vanilla CreateSyncList path while
+                // TargetPortal is present; do not let the watchdog mistake that deliberate
+                // bypass for a dead revision hook.
+                DirtyPatches.Disabled = false;
+                DirtyPatches.WatchdogRecv = 0;
+                DirtyPatches.WatchdogMarks = 0;
+                return;
+            }
             _watchdogTimer += dt;
             if (_watchdogTimer < 10f) return;
             _watchdogTimer = 0f;

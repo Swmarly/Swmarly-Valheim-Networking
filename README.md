@@ -25,6 +25,7 @@ continuing with unverified IL.
 - Optional Nagle/low-latency tuning
 - Zstandard compression with vanilla-peer fallback (plain zstd in the first package)
 - Dirty-set synchronization with watchdog recovery
+- TargetPortal compatibility: its explicit portal ZDO sends and portal-travel removals use the vanilla sync-list path
 - Relay throttling for low-priority objects
 - Top-K send selection during large joins
 - Receive packet caps
@@ -65,7 +66,9 @@ Players can join without installing the mod unless the server owner explicitly e
 
 Do not install SmoothServer, ValheimTune, FiresGhettoNetworking, BetterNetworking, ServerSideMap,
 or Serverside Simulations alongside this plugin. They patch the same Valheim networking/map
-methods and the merged plugin will fail closed when it detects one.
+methods and the merged plugin will fail closed when it detects one. TargetPortal is supported;
+when it is loaded, dirty-set replacement is automatically bypassed so TargetPortal's forced
+portal sends and vanilla portal-travel cleanup remain intact.
 
 The generated config is `BepInEx/config/Swmarly.ValheimNetworking.cfg`.
 
