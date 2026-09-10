@@ -20,7 +20,7 @@ namespace ValheimTune
             bool loaded = false;
             try
             {
-                foreach (var kv in Bootstrap.Chainloader.PluginInfos)
+                foreach (var kv in BepInEx.Bootstrap.Chainloader.PluginInfos)
                 {
                     if (kv.Key != null && kv.Key.Equals(PluginGuid, StringComparison.OrdinalIgnoreCase))
                     {
