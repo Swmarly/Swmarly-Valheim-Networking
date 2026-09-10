@@ -24,11 +24,12 @@ namespace SmoothServer
     }
 
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+    [BepInDependency("org.bepinex.plugins.targetportal", BepInDependency.DependencyFlags.SoftDependency)]
     public class SmoothServerPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "Swmarly.ValheimNetworking";
         public const string PluginName = "Swmarly Valheim Networking";
-        public const string PluginVersion = "0.1.3";
+        public const string PluginVersion = "0.1.4";
 
         internal static ManualLogSource Log;
         internal static ConfigFile Cfg;
