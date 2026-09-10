@@ -155,7 +155,17 @@ namespace ValheimTune.Patches
                     return InNear(zone, s, sd) || (z.Distant && InDistant(zone, s, sd));
                 },
                 shouldSend: id => peer.ShouldSend(Z(id)),
-                deferSend: id => RelayThrottled(peer, Z(id)));
+                deferSend: id => RelayThrottled(peer, Z(id)),
+                // A dirty ZDO that leaves this peer's area still has to be removed from that
+                // peer. This is especially important for portal travel: the player's ZDO now
+                // has the destination position, so the old portal peer sees it as out of area.
+                // Keep vanilla's separate invalid-sector removal path alive for ZDOs that this
+                // peer already knows; otherwise the old player object can remain visible there.
+                onInvalid: id =>
+                {
+                    if (!peer.m_zdos.ContainsKey(id)) return;
+                    if (!peer.m_invalidSector.Contains(id)) peer.m_invalidSector.Add(id);
+                });
             LastDrained = s_ids.Count;
 
             // Vanilla only ships distant objects when there are fewer than 10 near ones; keep that.
