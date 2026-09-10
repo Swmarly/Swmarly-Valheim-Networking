@@ -1,5 +1,11 @@
 # Changelog — Swmarly Valheim Networking
 
+## 0.1.4 — TargetPortal compatibility
+
+- Automatically keeps vanilla ZDO sync-list handling when TargetPortal is loaded, preserving
+  TargetPortal's forced portal advertisements and correct player removal after portal travel.
+- The remaining networking, queue, compression, and performance modules stay enabled.
+
 ## 0.1.3 — portal sync fix
 
 - Preserve vanilla invalid-sector removal when dirty-set synchronization drops a known ZDO
