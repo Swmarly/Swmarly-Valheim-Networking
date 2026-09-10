@@ -1,5 +1,10 @@
 # Changelog — Swmarly Valheim Networking
 
+## 0.1.3 — portal sync fix
+
+- Preserve vanilla invalid-sector removal when dirty-set synchronization drops a known ZDO
+  outside a peer's active area, preventing players from remaining visible at their old portal.
+
 ## 0.1.2 — safer defaults
 
 - Shared server-side map synchronization is now disabled by default.

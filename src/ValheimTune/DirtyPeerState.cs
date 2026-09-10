@@ -30,12 +30,26 @@ namespace ValheimTune
             return full;
         }
 
-        public void Drain(List<TId> into, Func<TId, bool> exists, Func<TId, bool> inArea, Func<TId, bool> shouldSend, Func<TId, bool> deferSend = null)
+        public void Drain(List<TId> into, Func<TId, bool> exists, Func<TId, bool> inArea,
+                          Func<TId, bool> shouldSend, Func<TId, bool> deferSend = null,
+                          Action<TId> onInvalid = null)
         {
             _prune.Clear();
             foreach (var id in Pending)
             {
-                if (!exists(id) || !inArea(id) || !shouldSend(id)) { _prune.Add(id); continue; }
+                if (!exists(id))
+                {
+                    _prune.Add(id);
+                    onInvalid?.Invoke(id);
+                    continue;
+                }
+                if (!inArea(id))
+                {
+                    _prune.Add(id);
+                    onInvalid?.Invoke(id);
+                    continue;
+                }
+                if (!shouldSend(id)) { _prune.Add(id); continue; }
                 if (deferSend != null && deferSend(id)) continue;    // skip this round, stays pending
                 into.Add(id);
             }
