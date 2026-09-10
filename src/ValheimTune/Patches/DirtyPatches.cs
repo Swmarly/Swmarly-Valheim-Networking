@@ -61,7 +61,7 @@ namespace ValheimTune.Patches
         public static DirtyPeerState<ZDOID> StateFor(ZDOMan.ZDOPeer peer) =>
             s_state.GetValue(peer, _ => new DirtyPeerState<ZDOID>());
 
-        private static bool Active => Compat.ReplacementsAllowed && Cfg.DirtySets.Value && !Disabled && ZNet.instance != null && ZNet.instance.IsServer();
+        private static bool Active => Compat.ReplacementsAllowed && Cfg.DirtySets.Value && !TargetPortalCompat.IsLoaded && !Disabled && ZNet.instance != null && ZNet.instance.IsServer();
 
         // Every revision change in the game goes through one of these two auto-property setters:
         // local Set* calls via IncreaseDataRevision (ZDO.cs:518), network receives via the direct
