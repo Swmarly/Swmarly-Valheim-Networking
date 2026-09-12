@@ -1,9 +1,10 @@
 # Modules
 
 The plugin discovers its modules at startup and applies only the side-appropriate features.
-All optional modules and bridge patches are guarded by the Valheim 1.0.7/network 39 compatibility
-gate. When the build is unknown, the plugin remains loaded for diagnostics/config visibility but
-does not install optional Harmony/runtime features.
+All optional modules and bridge patches are guarded by runtime structural validation. Compatible
+hotfixes and minor updates can remain active even when their version is not listed. If a required
+method, field, signature, Steam API, or asserted IL seam changes, the preflight fails closed and
+replacement features stay vanilla. KnownGoodBuilds records explicitly verified releases.
 
 | Area | Selected implementation | Notes |
 | --- | --- | --- |
