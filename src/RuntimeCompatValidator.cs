@@ -316,7 +316,10 @@ namespace SmoothServer
                 case OperandType.InlineNone: size = 0; break;
                 case OperandType.ShortInlineBrTarget:
                 case OperandType.ShortInlineI:
-                case OperandType.ShortInlineR:
+                // ShortInlineR is the four-byte operand used by ldc.r4. Treating it as
+                // one byte desynchronizes the scan at the first float and creates the false
+                // "IL could not be read" failure seen on ZSyncTransform.SyncPosition.
+                case OperandType.ShortInlineR: size = 4; break;
                 case OperandType.ShortInlineVar: size = 1; break;
                 case OperandType.InlineVar: size = 2; break;
                 case OperandType.InlineI:
