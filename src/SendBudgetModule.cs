@@ -71,6 +71,7 @@ namespace SmoothServer
 
             var target = AccessTools.Method(typeof(ZDOMan), "SendZDOs");
             if (target == null)
+            PatchGuard.RequireExclusive(target, "ZDOMan.SendZDOs");
                 throw new Exception("SmoothServer SendBudget: ZDOMan.SendZDOs not found");
 
             Harmony.Patch(target,
