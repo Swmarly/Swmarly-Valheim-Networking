@@ -36,9 +36,49 @@ namespace SmoothServer
                 // Its compatibility guard is refreshed before the selected patches install.
                 TargetPortalCompat.Refresh(log);
                 Compat.GameVersion = global::Version.CurrentVersion.ToString();
-                Compat.ReplacementsAllowed = !Cfg.DisableOnUnknownBuild.Value ||
-                                             Compat.IsKnown(Compat.GameVersion, Cfg.KnownGoodBuilds.Value);
+
+                int networkVersion;
+                if (RuntimeCompatValidator.TryGetNetworkVersion(out networkVersion))
+                {
+                    Compat.NetworkVersion = networkVersion.ToString();
+                    log.LogInfo("[ValheimTuneBridge] game=" + Compat.GameVersion +
+                                " network=" + Compat.NetworkVersion);
+                }
+                else
+                {
+                    Compat.NetworkVersion = "?";
+                    log.LogWarning("[ValheimTuneBridge] could not read Valheim's network-version field; " +
+                                   "network identity is unconfirmed");
+                }
+
+                bool known = Compat.IsKnown(Compat.GameVersion, Cfg.KnownGoodBuilds.Value);
+                string validation;
+                bool surfaceOk = RuntimeCompatValidator.TryValidate(out validation);
+                Compat.ValidationSummary = validation;
+
+                // Network version 40 is part of the 1.0.12 verification contract. If the game
+                // exposes the identity and it disagrees, fail closed even if method names happen
+                // to look unchanged.
+                if (Compat.GameVersion == "1.0.12" && Compat.NetworkVersion != "40")
+                {
+                    surfaceOk = false;
+                    validation += "; expected network version 40, found " + Compat.NetworkVersion;
+                }
+
+                // The explicit allow-list remains authoritative. Runtime preflight is an
+                // additional guard for listed builds, not an automatic future-version bypass:
+                // an unknown build can be structurally similar and still have changed protocol
+                // semantics, so it stays vanilla until a release is verified and listed.
+                Compat.ReplacementsAllowed = surfaceOk &&
+                    (!Cfg.DisableOnUnknownBuild.Value || known);
                 SmoothServerPlugin.ReplacementsAllowed = Compat.ReplacementsAllowed;
+
+                if (!surfaceOk)
+                    log.LogError("[ValheimTuneBridge] runtime compatibility validation failed: " + validation);
+                else if (!known && Cfg.DisableOnUnknownBuild.Value)
+                    log.LogWarning("[ValheimTuneBridge] " + Compat.GameVersion +
+                                   " passed structural checks but is not explicitly listed in " +
+                                   "KnownGoodBuilds; replacements remain disabled");
 
                 if (SmoothServerPlugin.ConflictingNetworkingModPresent)
                 {

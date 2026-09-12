@@ -38,6 +38,7 @@ namespace SmoothServer
     internal sealed class PeerTelemetryModule : FeatureModule
     {
         public override string Name => "PeerTelemetry";
+        public override bool RequiresCompatibility => false;
 
         internal struct PeerStat
         {
@@ -96,6 +97,10 @@ namespace SmoothServer
             SampleIntervalSec = Mathf.Clamp(_sampleInterval.Value, 0.1f, 10f);
             Stats.Clear();
             _sampleAcc = 0f; _logAcc = 0f;
+            _steamIface = 0;
+            _ifaceRetryAt = 0f;
+            _ifaceLogged = false;
+            _qualityAbsent = false;
             Active = true;
             Log.LogInfo("[PeerTelemetry] sampling every " + SampleIntervalSec.ToString("F1") +
                         "s, logging every " + IntervalSec.ToString("F1") + "s (no patches)");

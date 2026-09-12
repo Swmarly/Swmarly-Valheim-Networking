@@ -5,7 +5,7 @@ and FiresGhettoNetworking into a single server-first networking/performance stac
 
 ## Target
 
-- Valheim 1.0.7, network version 39
+- Valheim 1.0.7 and 1.0.12, network versions 39 and 40
 - Dedicated-server Steam app 896660
 - BepInEx 5.4.2350
 - Linux and Windows dedicated servers

@@ -24,13 +24,15 @@ jobs:
         id: buildid
         run: |
           BUILDID=$(curl -s https://api.steamcmd.net/v1/info/896660 | jq -r '.data."896660".depots.branches.public.buildid')
+          test -n "$BUILDID" && test "$BUILDID" != "null"
+          echo "Valheim public dedicated-server buildid=$BUILDID"
           echo "buildid=$BUILDID" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@v4
         id: cache
         with:
           path: lib/
-          key: gamelibs-v2-${{ steps.buildid.outputs.buildid }}
+          key: gamelibs-v3-${{ steps.buildid.outputs.buildid }}
 
       # DepotDownloader: anonymous Steam login, app 896660 depot 896661 (Linux dedicated server CONTENT; 1004/1005/1006 are only the Steam runtime redist — first CI run proved that).
       # Verified in BUILD-PIPELINE.md §2 this session; re-check `-branch` / auth requirements
@@ -65,6 +67,16 @@ jobs:
           cp bie/BepInExPack_Valheim/BepInEx/core/{BepInEx,0Harmony,BepInEx.Harmony,Mono.Cecil}.dll lib/
 
           rm -rf depot-cache dd.zip dd bie.zip bie
+
+      - name: Validate Valheim assembly surface
+        run: |
+          set -euo pipefail
+          dotnet tool install --tool-path "$RUNNER_TEMP/ilspycmd" ilspycmd
+          python3 scripts/validate_valheim_assemblies.py \
+            --assembly lib/assembly_valheim.dll \
+            --ilspy "$RUNNER_TEMP/ilspycmd/ilspycmd" \
+            --expected-game-version 1.0.12 \
+            --expected-network-version 40
 
       - name: Build Swmarly Valheim Networking
         run: dotnet build src -c Release -p:ValheimManagedDir="${{ github.workspace }}/lib" -p:BepInExCoreDir="${{ github.workspace }}/lib"

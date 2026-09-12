@@ -8,6 +8,8 @@ namespace ValheimTune
     {
         public static bool ReplacementsAllowed = true;
         public static string GameVersion = "?";
+        public static string NetworkVersion = "?";
+        public static string ValidationSummary = "not-run";
 
         // Comma-separated list, whitespace tolerated, exact match on the trimmed entries.
         public static bool IsKnown(string version, string knownList)

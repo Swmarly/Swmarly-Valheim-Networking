@@ -44,6 +44,7 @@ namespace SmoothServer
     internal sealed class StatsLogModule : FeatureModule
     {
         public override string Name => "StatsLog";
+        public override bool RequiresCompatibility => false;
         public override string Section => "StatsLog";
 
         private ConfigEntry<float> _intervalSec;
@@ -271,9 +272,21 @@ namespace SmoothServer
                     Json.KV("name", s.PlayerName),
                     Json.KV("id", ShortId(s.Uid)),
                     Json.KV("rttMs", s.Ping),
+                    Json.KV("qualityLocal", s.QualityLocal),
+                    Json.KV("qualityRemote", s.QualityRemote),
+                    Json.KV("outBytesPerSec", s.OutBytesPerSec),
+                    Json.KV("inBytesPerSec", s.InBytesPerSec),
+                    Json.KV("pendingReliable", s.PendingReliable),
+                    Json.KV("pendingUnreliable", s.PendingUnreliable),
                     Json.KV("pendingBytes", s.PendingReliable + s.PendingUnreliable),
+                    Json.KV("sentUnackedReliable", s.SentUnackedReliable),
                     Json.KV("inFlightBytes", s.SentUnackedReliable),
+                    Json.KV("steamSendRateBytesPerSec", s.SendRateBytesPerSec),
+                    Json.KV("socketQueueBytes", s.SocketQueueBytes),
                     Json.KV("queuedBytes", s.SocketQueueBytes),
+                    Json.KV("zdoQueue", s.ZdoQueue),
+                    Json.KV("forceSend", s.ForceSend),
+                    Json.KV("invalidSector", s.InvalidSector),
                     Json.KV("framed", framed)
                 };
                 if (haveBudget)

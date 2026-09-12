@@ -56,6 +56,14 @@ namespace SmoothServer
 
         public virtual string Section => Name;
         public virtual bool DefaultEnabled => true;
+
+        /// <summary>
+        /// False for observation-only features that do not replace a game method. These remain
+        /// available on an unknown future build so they can report whether the vanilla transport
+        /// is healthy while all unsafe Harmony replacements stay fail-closed.
+        /// </summary>
+        public virtual bool RequiresCompatibility => true;
+
         protected virtual string EnabledDescription => "Enable the " + Name + " module.";
 
         public ConfigEntry<bool> EnabledCfg;
@@ -134,7 +142,7 @@ namespace SmoothServer
                 return;
             }
 
-            if (!SmoothServerPlugin.ReplacementsAllowed)
+            if (RequiresCompatibility && !SmoothServerPlugin.ReplacementsAllowed)
             {
                 Status = "disabled(unknown-build)";
                 Applied = false;
