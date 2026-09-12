@@ -1,5 +1,11 @@
 # Changelog — Swmarly Valheim Networking
 
+## 0.1.9 — forward-compatible runtime validation
+
+- Compatible Valheim hotfixes and minor updates can remain active when the validated runtime surface is unchanged.
+- Fundamental method, field, signature, Steam API, or asserted-IL changes still fail closed.
+- KnownGoodBuilds remains an explicit verification record rather than the only activation gate.
+
 ## 0.1.8 — Valheim 1.0.12 runtime compatibility
 
 - Recognize Valheim 1.0.12 `Version.c_networkVersion` and network version 40.
