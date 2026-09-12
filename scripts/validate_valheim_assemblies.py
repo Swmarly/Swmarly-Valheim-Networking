@@ -106,7 +106,7 @@ def main():
         print("Version type has no embedded human-readable version string; network-version and " +
               "assembly-surface checks remain authoritative.")
     network_matches = re.findall(
-        r"(?:m_networkVersion|NetworkVersion|networkVersion)\s*=\s*(\d+)", version_text)
+        r"\b(?:c_networkVersion|m_networkVersion|NetworkVersion|networkVersion)\b\s*=\s*(\d+)", version_text)
     if str(args.expected_network_version) not in network_matches:
         failures.append("Version type does not expose expected network version %d (found %s)" %
                         (args.expected_network_version, ",".join(network_matches) or "none"))

@@ -29,7 +29,7 @@ namespace ValheimTune
             DirtySets        = c.Bind("Sync", "DirtySets", true, "B1: only consider changed ZDOs each round instead of rescanning the whole active area. Full scan on join, zone change, and every ReconcileSeconds.");
             ReconcileSeconds = c.Bind("Sync", "ReconcileSeconds", 30f, "Safety-net full scan interval per peer when DirtySets is on.");
             RelayMinIntervalMs = c.Bind("Sync", "RelayMinIntervalMs", 0, "Do not re-send a non-prioritized object (fish, items, pieces) to the same peer more often than this, in ms. 0 = vanilla. 200 = 5 Hz; fish and drifting items are the bulk of idle traffic at a big base.");
-            KnownGoodBuilds = c.Bind("Compat", "KnownGoodBuilds", "1.0.7,1.0.12", "Game versions (Version.CurrentVersion) this build was verified against. Comma-separated. The shipped 0.1.7 defaults include Valheim 1.0.12/network 40.");
+            KnownGoodBuilds = c.Bind("Compat", "KnownGoodBuilds", "1.0.7,1.0.12", "Game versions (Version.CurrentVersion) this build was verified against. Comma-separated. The shipped 0.1.8 defaults include Valheim 1.0.12/network 40.");
             // Upgrade the old 0.1.4/0.1.5 shipped default in-place. Deliberately narrow: a
             // custom allow-list is never rewritten; the bridge still requires its preflight.
             if (KnownGoodBuilds.Value.Trim() == "1.0.7")

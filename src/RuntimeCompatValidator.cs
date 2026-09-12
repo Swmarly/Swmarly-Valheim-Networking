@@ -22,7 +22,7 @@ namespace SmoothServer
         {
             value = 0;
             Type type = typeof(global::Version);
-            string[] names = { "m_networkVersion", "NetworkVersion", "networkVersion" };
+            string[] names = { "c_networkVersion", "m_networkVersion", "NetworkVersion", "networkVersion" };
 
             for (int i = 0; i < names.Length; i++)
             {
@@ -57,8 +57,16 @@ namespace SmoothServer
         {
             var errors = new List<string>();
 
+            Type expectedSendReturn = typeof(void);
+            try
+            {
+                if (global::Version.CurrentVersion.ToString() == "1.0.12")
+                    expectedSendReturn = typeof(bool);
+            }
+            catch { }
+
             MethodInfo send = RequireMethod(errors, typeof(ZDOMan), "SendZDOs",
-                typeof(void), new[] { typeof(ZDOMan.ZDOPeer), typeof(bool) });
+                expectedSendReturn, new[] { typeof(ZDOMan.ZDOPeer), typeof(bool) });
             MethodInfo cadence = RequireMethod(errors, typeof(ZDOMan), "SendZDOToPeers2",
                 typeof(void), new[] { typeof(float) });
             MethodInfo release = RequireMethod(errors, typeof(ZDOMan), "ReleaseZDOS",
@@ -75,16 +83,20 @@ namespace SmoothServer
             MethodInfo callbacks = RequireMethod(errors, typeof(ZSteamSocket), "RegisterGlobalCallbacks",
                 typeof(void), Type.EmptyTypes);
 
-            MethodInfo syncPosition = AccessTools.Method(typeof(ZSyncTransform), "SyncPosition");
-            if (syncPosition == null)
-                errors.Add("ZSyncTransform.SyncPosition missing");
-            else
+            MethodInfo syncPosition = null;
+            if (!SmoothServerPlugin.IsServerSide)
             {
-                ParameterInfo[] p = syncPosition.GetParameters();
-                if (p.Length != 3 || p[0].ParameterType != typeof(ZDO) ||
-                    p[1].ParameterType != typeof(float) ||
-                    p[2].ParameterType != typeof(bool).MakeByRefType() || !p[2].IsOut)
-                    errors.Add("ZSyncTransform.SyncPosition signature is not (ZDO,float,out bool)");
+                syncPosition = AccessTools.Method(typeof(ZSyncTransform), "SyncPosition");
+                if (syncPosition == null)
+                    errors.Add("ZSyncTransform.SyncPosition missing");
+                else
+                {
+                    ParameterInfo[] p = syncPosition.GetParameters();
+                    if (p.Length != 3 || p[0].ParameterType != typeof(ZDO) ||
+                        p[1].ParameterType != typeof(float) ||
+                        p[2].ParameterType != typeof(bool).MakeByRefType() || !p[2].IsOut)
+                        errors.Add("ZSyncTransform.SyncPosition signature is not (ZDO,float,out bool)");
+                }
             }
 
             MethodInfo receive = RequireMethod(errors, typeof(ZRpc), "Update",
@@ -137,8 +149,11 @@ namespace SmoothServer
             CheckIntIL(errors, send, "ZDOMan.SendZDOs", 2048, 1);
             CheckIntIL(errors, create, "ZNetScene.CreateObjects", 10, 1);
             CheckFloatIL(errors, release, "ZDOMan.ReleaseZDOS", 2f, 1);
-            CheckFloatIL(errors, syncPosition, "ZSyncTransform.SyncPosition", 0.2f, 2);
-            CheckFloatIL(errors, syncPosition, "ZSyncTransform.SyncPosition", 2f, 2);
+            if (!SmoothServerPlugin.IsServerSide)
+            {
+                CheckFloatIL(errors, syncPosition, "ZSyncTransform.SyncPosition", 0.2f, 2);
+                CheckFloatIL(errors, syncPosition, "ZSyncTransform.SyncPosition", 2f, 2);
+            }
 
             if (errors.Count == 0)
             {
@@ -216,6 +231,7 @@ namespace SmoothServer
             if (body == null) return false;
 
             byte[] il = body.GetILAsByteArray();
+            if (il == null) return false;
             int offset = 0;
             while (offset < il.Length)
             {
@@ -257,6 +273,7 @@ namespace SmoothServer
             if (body == null) return false;
 
             byte[] il = body.GetILAsByteArray();
+            if (il == null) return false;
             int offset = 0;
             while (offset < il.Length)
             {
