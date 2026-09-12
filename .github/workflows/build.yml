@@ -72,13 +72,10 @@ jobs:
         run: |
           set -euo pipefail
           dotnet tool install --tool-path "$RUNNER_TEMP/ilspycmd" ilspycmd
-          python3 scripts/validate_valheim_assemblies.py \
-            --assembly lib/assembly_valheim.dll \
-            --ilspy "$RUNNER_TEMP/ilspycmd/ilspycmd" \
-            # The validator reports the live assembly identity and enforces the structural surface.
-            # Compatible hotfixes can build automatically; changed method/field/signature/IL
-            # contracts still fail the build and the runtime gate.
-
+          # The validator reports the live assembly identity and enforces the structural surface.
+          # Compatible hotfixes can build automatically; changed method/field/signature/IL
+          # contracts still fail the build and the runtime gate.
+          python3 scripts/validate_valheim_assemblies.py             --assembly lib/assembly_valheim.dll             --ilspy "$RUNNER_TEMP/ilspycmd/ilspycmd"
 
       - name: Build Swmarly Valheim Networking
         run: dotnet build src -c Release -p:ValheimManagedDir="${{ github.workspace }}/lib" -p:BepInExCoreDir="${{ github.workspace }}/lib"
