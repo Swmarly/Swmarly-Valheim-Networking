@@ -24,6 +24,8 @@ jobs:
         id: buildid
         run: |
           BUILDID=$(curl -s https://api.steamcmd.net/v1/info/896660 | jq -r '.data."896660".depots.branches.public.buildid')
+          test -n "$BUILDID" && test "$BUILDID" != "null"
+          echo "Valheim public dedicated-server buildid=$BUILDID"
           echo "buildid=$BUILDID" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@v4
