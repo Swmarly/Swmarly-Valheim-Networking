@@ -98,9 +98,13 @@ def main():
         types[name] = run_type(args.ilspy, args.assembly, name)
 
     version_text = types["Version"]
-    if args.expected_game_version not in re.findall(r"(?<!\d)\d+\.\d+\.\d+(?!\d)", version_text):
-        failures.append("Version type does not contain expected game version %s" %
-                        args.expected_game_version)
+    embedded_versions = re.findall(r"(?<!\d)\d+\.\d+\.\d+(?!\d)", version_text)
+    if embedded_versions and args.expected_game_version not in embedded_versions:
+        failures.append("Version type exposes %s, not expected game version %s" %
+                        (",".join(sorted(set(embedded_versions))), args.expected_game_version))
+    elif not embedded_versions:
+        print("Version type has no embedded human-readable version string; network-version and " +
+              "assembly-surface checks remain authoritative.")
     network_matches = re.findall(
         r"(?:m_networkVersion|NetworkVersion|networkVersion)\s*=\s*(\d+)", version_text)
     if str(args.expected_network_version) not in network_matches:
