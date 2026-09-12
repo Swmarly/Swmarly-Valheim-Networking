@@ -92,6 +92,7 @@ namespace SmoothServer
             if (reg == null)
                 throw new Exception("SmoothServer LowLatency: ZSteamSocket.RegisterGlobalCallbacks not found");
             PatchGuard.RequireExclusive(reg, "ZSteamSocket.RegisterGlobalCallbacks");
+            PatchGuard.RequireExclusive(reg, "ZSteamSocket.RegisterGlobalCallbacks");
 
             Harmony.Patch(reg, postfix: new HarmonyMethod(typeof(LowLatencyModule), nameof(Postfix)));
 
