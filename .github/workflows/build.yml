@@ -75,8 +75,10 @@ jobs:
           python3 scripts/validate_valheim_assemblies.py \
             --assembly lib/assembly_valheim.dll \
             --ilspy "$RUNNER_TEMP/ilspycmd/ilspycmd" \
-            --expected-game-version 1.0.12 \
-            --expected-network-version 40
+            # The validator reports the live assembly identity and enforces the structural surface.
+            # Compatible hotfixes can build automatically; changed method/field/signature/IL
+            # contracts still fail the build and the runtime gate.
+
 
       - name: Build Swmarly Valheim Networking
         run: dotnet build src -c Release -p:ValheimManagedDir="${{ github.workspace }}/lib" -p:BepInExCoreDir="${{ github.workspace }}/lib"

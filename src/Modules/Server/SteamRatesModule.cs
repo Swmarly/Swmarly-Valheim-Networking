@@ -43,12 +43,14 @@ namespace SmoothServer
         private ConfigEntry<int> _sendRateMin;
         private ConfigEntry<bool> _writeGameServerUtils;
         private ConfigEntry<bool> _writeUserUtils;
+        private ConfigEntry<bool> _applyPerConnection;
 
         internal static bool Active;
         internal static int SendRateMax = 1048576;
         internal static int SendRateMin;              // 0 = leave vanilla
         internal static bool WriteGameServerUtils = true;
         internal static bool WriteUserUtils = true;
+        internal static bool ApplyPerConnection = true;
 
         private static bool _pending;                 // apply on the next tick (server side only)
         private static bool _appliedOnce;
@@ -74,8 +76,11 @@ namespace SmoothServer
                 "Try SteamNetworkingUtils - the interface vanilla ZSteamSocket uses on the client " +
                 "build. Not initialised in a dedicated-server process; refusing there is expected " +
                 "and is not logged as a problem.");
+            _applyPerConnection = cfg.Bind("SteamRates", "ApplyPerConnection", true,
+                "Apply accepted send-rate bounds to already-connected Steam peers at connection " +
+                "scope. Global settings remain connect-time defaults.");
             Watch(_sendRateMax); Watch(_sendRateMin);
-            Watch(_writeGameServerUtils); Watch(_writeUserUtils);
+            Watch(_writeGameServerUtils); Watch(_writeUserUtils); Watch(_applyPerConnection);
         }
 
         protected override void ApplyPatches()
@@ -115,6 +120,7 @@ namespace SmoothServer
             SendRateMin = Math.Max(0, _sendRateMin.Value);
             WriteGameServerUtils = _writeGameServerUtils.Value;
             WriteUserUtils = _writeUserUtils.Value;
+            ApplyPerConnection = _applyPerConnection.Value;
         }
 
         private static void Postfix()
@@ -149,10 +155,11 @@ namespace SmoothServer
             int afterMinUser = ReadValue(false, ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_SendRateMin);
             int afterMinGs = ReadValue(true, ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_SendRateMin);
 
+            int connectionSets = ApplyExistingConnections();
             SmoothServerPlugin.Log.LogInfo("[SteamRates] applied=" + any +
                 " -> SendRateMax userUtils=" + Show(afterMaxUser) + " gameServerUtils=" + Show(afterMaxGs) +
                 " | SendRateMin userUtils=" + Show(afterMinUser) + " gameServerUtils=" + Show(afterMinGs) +
-                " (vanilla is " + VanillaRate + " for both)");
+                " (vanilla is " + VanillaRate + " for both; connectionSets=" + connectionSets + ")");
 
             if (!_appliedOnce)
             {
@@ -165,6 +172,39 @@ namespace SmoothServer
                 else if (afterMaxUser != afterMaxGs)
                     SmoothServerPlugin.Log.LogInfo("[SteamRates] the two utils interfaces have SEPARATE config stores on this build");
             }
+        }
+
+        private static int ApplyExistingConnections()
+        {
+            if (!ApplyPerConnection || ZNet.instance == null) return 0;
+
+            int applied = 0;
+            try
+            {
+                foreach (var peer in ZNet.instance.GetConnectedPeers())
+                {
+                    var socket = SteamTransport.AsSteamSocket(peer != null ? peer.m_socket : null);
+                    if (socket == null) continue;
+
+                    uint handle;
+                    if (!SteamTransport.TryGetConnectionHandle(socket, out handle)) continue;
+
+                    string reason;
+                    if (SendRateMax > 0 &&
+                        SteamTransport.TrySetConnectionConfig(
+                            "k_ESteamNetworkingConfig_SendRateMax", SendRateMax, handle, out reason))
+                        applied++;
+                    if (SendRateMin > 0 &&
+                        SteamTransport.TrySetConnectionConfig(
+                            "k_ESteamNetworkingConfig_SendRateMin", SendRateMin, handle, out reason))
+                        applied++;
+                }
+            }
+            catch (Exception e)
+            {
+                SmoothServerPlugin.Log.LogWarning("[SteamRates] existing-peer application failed: " + e.Message);
+            }
+            return applied;
         }
 
         private static string Show(int v)

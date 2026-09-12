@@ -214,7 +214,7 @@ namespace SmoothServer
                 return;
             }
             if (count != expected)
-                errors.Add(label + " expected " + expected + "x ldc.r4 " + value +
+                errors.Add(label + " expected " + expected + "x float constant " + value +
                            ", found " + count);
         }
 
@@ -270,17 +270,26 @@ namespace SmoothServer
 
             byte[] il = body.GetILAsByteArray();
             if (il == null) return false;
+
             int offset = 0;
             while (offset < il.Length)
             {
                 OpCode op;
                 if (!ReadOpcode(il, ref offset, out op)) return false;
+
                 if (op == OpCodes.Ldc_R4)
                 {
                     if (!CanRead(il, offset, 4)) return false;
                     float value = BitConverter.ToSingle(il, offset);
                     if (Math.Abs(value - wanted) < 0.0001f) count++;
                 }
+                else if (op == OpCodes.Ldc_R8)
+                {
+                    if (!CanRead(il, offset, 8)) return false;
+                    double value = BitConverter.ToDouble(il, offset);
+                    if (Math.Abs(value - wanted) < 0.0001) count++;
+                }
+
                 if (!SkipOperand(il, ref offset, op.OperandType)) return false;
             }
             return true;
@@ -321,6 +330,9 @@ namespace SmoothServer
                 case OperandType.InlineTok:
                 case OperandType.InlineType: size = type == OperandType.InlineI8 ||
                     type == OperandType.InlineR ? 8 : 4; break;
+                case OperandType.InlinePhi:
+                    size = 0;
+                    break;
                 case OperandType.InlineSwitch:
                     if (!CanRead(il, offset, 4)) return false;
                     int n = BitConverter.ToInt32(il, offset);

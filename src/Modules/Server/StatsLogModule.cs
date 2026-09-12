@@ -271,6 +271,8 @@ namespace SmoothServer
                 {
                     Json.KV("name", s.PlayerName),
                     Json.KV("id", ShortId(s.Uid)),
+                    Json.KV("steamStatusValid", s.Valid),
+                    Json.KV("steamStatus", s.SteamStatus),
                     Json.KV("rttMs", s.Ping),
                     Json.KV("qualityLocal", s.QualityLocal),
                     Json.KV("qualityRemote", s.QualityRemote),

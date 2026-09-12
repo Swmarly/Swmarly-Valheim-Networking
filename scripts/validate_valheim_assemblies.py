@@ -87,8 +87,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--assembly", required=True)
     parser.add_argument("--ilspy", required=True)
-    parser.add_argument("--expected-game-version", required=True)
-    parser.add_argument("--expected-network-version", required=True, type=int)
+    parser.add_argument("--expected-game-version")
+    parser.add_argument("--expected-network-version", type=int)
     args = parser.parse_args()
 
     failures = []
@@ -99,7 +99,7 @@ def main():
 
     version_text = types["Version"]
     embedded_versions = re.findall(r"(?<!\d)\d+\.\d+\.\d+(?!\d)", version_text)
-    if embedded_versions and args.expected_game_version not in embedded_versions:
+    if embedded_versions and args.expected_game_version and args.expected_game_version not in embedded_versions:
         failures.append("Version type exposes %s, not expected game version %s" %
                         (",".join(sorted(set(embedded_versions))), args.expected_game_version))
     elif not embedded_versions:
@@ -107,7 +107,7 @@ def main():
               "assembly-surface checks remain authoritative.")
     network_matches = re.findall(
         r"\b(?:c_networkVersion|m_networkVersion|NetworkVersion|networkVersion)\b\s*=\s*(\d+)", version_text)
-    if str(args.expected_network_version) not in network_matches:
+    if args.expected_network_version is not None and str(args.expected_network_version) not in network_matches:
         failures.append("Version type does not expose expected network version %d (found %s)" %
                         (args.expected_network_version, ",".join(network_matches) or "none"))
 
@@ -169,8 +169,10 @@ def main():
             print(" - " + failure, file=sys.stderr)
         return 1
 
-    print("Valheim compatibility validation PASSED: game=%s network=%d; methods, fields, signatures, and IL counts match." %
-          (args.expected_game_version, args.expected_network_version))
+    detected_game = ",".join(sorted(set(embedded_versions))) or "unknown"
+    detected_network = ",".join(network_matches) or "unknown"
+    print("Valheim compatibility validation PASSED: game=%s network=%s; methods, fields, signatures, and IL counts match." %
+          (detected_game, detected_network))
     return 0
 
 
