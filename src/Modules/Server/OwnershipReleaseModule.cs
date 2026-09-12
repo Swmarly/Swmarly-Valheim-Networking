@@ -62,6 +62,7 @@ namespace SmoothServer
 
             var target = AccessTools.Method(typeof(ZDOMan), "ReleaseZDOS");
             if (target == null)
+            PatchGuard.RequireExclusive(target, "ZDOMan.ReleaseZDOS");
                 throw new Exception("SmoothServer OwnershipRelease: ZDOMan.ReleaseZDOS not found");
 
             Harmony.Patch(target,
