@@ -85,10 +85,13 @@ namespace SmoothServer
         protected override void ApplyPatches()
         {
             ReadConfig();
+            _absent = false;
+            _lastReadback = null;
 
             var reg = AccessTools.Method(typeof(ZSteamSocket), "RegisterGlobalCallbacks");
             if (reg == null)
                 throw new Exception("SmoothServer LowLatency: ZSteamSocket.RegisterGlobalCallbacks not found");
+            PatchGuard.RequireExclusive(reg, "ZSteamSocket.RegisterGlobalCallbacks");
 
             Harmony.Patch(reg, postfix: new HarmonyMethod(typeof(LowLatencyModule), nameof(Postfix)));
 
@@ -106,12 +109,14 @@ namespace SmoothServer
         public override void Disable()
         {
             Active2 = false;
+            _absent = false;
+            _lastReadback = null;
             base.Disable();
         }
 
         public override void OnConfigChanged(ConfigEntryBase entry)
         {
-            if (entry != _nagleMicros && entry != _sendBufferBytes) return;
+            if (entry != _nagleMicros && entry != _sendBufferBytes && entry != _applyPerConnection) return;
             ReadConfig();
             if (_registered) Apply("config changed");
             else Log.LogInfo("[LowLatency] config changed -> nagleMicros=" + NagleMicros +
