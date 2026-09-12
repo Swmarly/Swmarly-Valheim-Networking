@@ -57,16 +57,12 @@ namespace SmoothServer
         {
             var errors = new List<string>();
 
-            Type expectedSendReturn = typeof(void);
-            try
-            {
-                if (global::Version.CurrentVersion.ToString() == "1.0.12")
-                    expectedSendReturn = typeof(bool);
-            }
-            catch { }
-
+            // Valheim has used both void and bool here across compatible releases. The
+            // return value is not consumed by our patches; reject only an unexpected shape.
             MethodInfo send = RequireMethod(errors, typeof(ZDOMan), "SendZDOs",
-                expectedSendReturn, new[] { typeof(ZDOMan.ZDOPeer), typeof(bool) });
+                null, new[] { typeof(ZDOMan.ZDOPeer), typeof(bool) });
+            if (send != null && send.ReturnType != typeof(void) && send.ReturnType != typeof(bool))
+                errors.Add("ZDOMan.SendZDOs has unsupported return type " + send.ReturnType);
             MethodInfo cadence = RequireMethod(errors, typeof(ZDOMan), "SendZDOToPeers2",
                 typeof(void), new[] { typeof(float) });
             MethodInfo release = RequireMethod(errors, typeof(ZDOMan), "ReleaseZDOS",
@@ -157,7 +153,7 @@ namespace SmoothServer
 
             if (errors.Count == 0)
             {
-                detail = "methods/fields/signatures/IL passed";
+                detail = "methods/fields/signatures/IL passed (forward-compatible surface)";
                 return true;
             }
 

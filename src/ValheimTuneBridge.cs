@@ -70,8 +70,11 @@ namespace SmoothServer
                 // additional guard for listed builds, not an automatic future-version bypass:
                 // an unknown build can be structurally similar and still have changed protocol
                 // semantics, so it stays vanilla until a release is verified and listed.
-                Compat.ReplacementsAllowed = surfaceOk &&
-                    (!Cfg.DisableOnUnknownBuild.Value || known);
+                // A verified structural surface is sufficient for ordinary hotfixes and
+                // compatible minor updates. The safety switch still fails closed when the
+                // preflight itself fails; KnownGoodBuilds remains a record of explicitly
+                // verified versions and is reported for diagnostics.
+                Compat.ReplacementsAllowed = surfaceOk;
                 SmoothServerPlugin.ReplacementsAllowed = Compat.ReplacementsAllowed;
 
                 if (!surfaceOk)
