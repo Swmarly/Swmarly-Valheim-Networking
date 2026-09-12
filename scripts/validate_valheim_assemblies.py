@@ -12,7 +12,7 @@ import sys
 
 
 def run_type(ilspy, assembly, type_name, il=False):
-    cmd = [ilspy, "--disable-update-check"]
+    cmd = [ilspy]
     if il:
         cmd.append("--ilcode")
     cmd.extend(["--type", type_name, assembly])
