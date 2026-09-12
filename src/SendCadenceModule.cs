@@ -49,6 +49,7 @@ namespace SmoothServer
             var target = AccessTools.Method(typeof(ZDOMan), "SendZDOToPeers2", new[] { typeof(float) });
             if (target == null)
                 throw new Exception("SmoothServer SendCadence: ZDOMan.SendZDOToPeers2(float) not found");
+            PatchGuard.RequireExclusive(target, "ZDOMan.SendZDOToPeers2");
 
             Harmony.Patch(target,
                 prefix: new HarmonyMethod(typeof(SendCadenceModule), nameof(Prefix))
