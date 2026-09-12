@@ -104,6 +104,9 @@ namespace SmoothServer
         public override void Disable()
         {
             Active = false;
+            _gsAbsent = false;
+            _userAbsent = false;
+            _appliedOnce = false;
             base.Disable();
         }
 
