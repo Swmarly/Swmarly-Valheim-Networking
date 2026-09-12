@@ -160,8 +160,8 @@ namespace SmoothServer.Net
             SendTag = _useBigDict.Value && _dictionariesAvailable ? TagBig : TagSmall;
 
             var send = AccessTools.Method(typeof(ZSteamSocket), "SendQueuedPackages");
-            if (send == null)
-            PatchGuard.RequireExclusive(send, "ZSteamSocket.SendQueuedPackages"); throw new Exception("ZSteamSocket.SendQueuedPackages not found");
+            if (send == null) throw new Exception("ZSteamSocket.SendQueuedPackages not found");
+            PatchGuard.RequireExclusive(send, "ZSteamSocket.SendQueuedPackages");
             var recv = AccessTools.Method(typeof(ZSteamSocket), "Recv");
             if (recv == null) throw new Exception("ZSteamSocket.Recv not found");
             var rrpcCtor = AccessTools.Constructor(typeof(ZRoutedRpc), new[] { typeof(bool) });
