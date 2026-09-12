@@ -11,6 +11,7 @@ namespace SmoothServer
     internal sealed class TelemetryModule : FeatureModule
     {
         public override string Name => "Telemetry";
+        public override bool RequiresCompatibility => false;
 
         private ConfigEntry<float> _interval;
 
