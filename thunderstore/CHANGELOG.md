@@ -1,5 +1,12 @@
 # Changelog — Swmarly Valheim Networking
 
+## 0.1.8 — Valheim 1.0.12 runtime compatibility
+
+- Recognize Valheim 1.0.12 `Version.c_networkVersion` and network version 40.
+- Validate the verified `bool ZDOMan.SendZDOs(ZDOPeer, bool)` signature.
+- Keep client-only `ZSyncTransform.SyncPosition` IL checks out of dedicated-server preflight.
+- Preserve the explicit known-build allow-list and fail-closed behavior.
+
 ## 0.1.7 — release version correction
 
 - Corrected the plugin, project, and Thunderstore package version to 0.1.7.
