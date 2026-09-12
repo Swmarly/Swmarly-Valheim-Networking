@@ -54,7 +54,7 @@ namespace SmoothServer
                 bool known = Compat.IsKnown(Compat.GameVersion, Cfg.KnownGoodBuilds.Value);
                 string validation;
                 bool surfaceOk = RuntimeCompatValidator.TryValidate(out validation);
-                Compat.ValidationSummary = validation;
+                // ValidationSummary is assigned after the network contract check below.
 
                 // Network version 40 is part of the 1.0.12 verification contract. If the game
                 // exposes the identity and it disagrees, fail closed even if method names happen
@@ -64,6 +64,7 @@ namespace SmoothServer
                     surfaceOk = false;
                     validation += "; expected network version 40, found " + Compat.NetworkVersion;
                 }
+                Compat.ValidationSummary = validation;
 
                 // The explicit allow-list remains authoritative. Runtime preflight is an
                 // additional guard for listed builds, not an automatic future-version bypass:
