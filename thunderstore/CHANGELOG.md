@@ -1,5 +1,10 @@
 # Changelog — Swmarly Valheim Networking
 
+## 0.1.7 — release version correction
+
+- Corrected the plugin, project, and Thunderstore package version to 0.1.7.
+- No networking behavior or compatibility policy changed in this version.
+
 ## 0.1.4 — TargetPortal compatibility
 
 - Automatically keeps vanilla ZDO sync-list handling when TargetPortal is loaded, preserving
