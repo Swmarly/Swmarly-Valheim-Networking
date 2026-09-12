@@ -1,3 +1,15 @@
+## 0.1.10 — network scheduling and transport hardening
+
+- Replaced synchronized all-peer send sweeps with a bounded fair scheduler that preserves aggregate
+  send cadence for normal 5–6 player server ticks while reducing same-frame bursts.
+- Added wrapper-safe Steam socket discovery and per-peer Steam real-time status diagnostics.
+- Applied validated Steam send-rate/Nagle settings at connection scope for existing peers.
+- Added telemetry validity/reason fields and adaptive-budget grace handling for transient status misses.
+- Made float IL validation accept both ldc.r4 and ldc.r8 while retaining strict instruction parsing.
+- Clarified compatibility logs and made CI validate the live assembly surface instead of pinning one
+  human-readable game version.
+- Preserved TargetPortal's vanilla sync-list fallback.
+
 # Changelog — Swmarly Valheim Networking
 
 ## 0.1.9 — forward-compatible runtime validation

@@ -48,6 +48,7 @@ namespace SmoothServer
         private ConfigEntry<float> _smoothing;
         private ConfigEntry<float> _logInterval;
         private ConfigEntry<bool> _callSiteSwap;
+        private ConfigEntry<float> _telemetryGraceSec;
 
         internal static bool Active;
         internal static int FloorBytes = 16384;
@@ -56,6 +57,7 @@ namespace SmoothServer
         internal static int PendingBackoffBytes = 8192;
         internal static float Smoothing = 0.3f;
         internal static bool UseCallSiteSwap = false;
+        internal static float TelemetryGraceSec = 5f;
 
         private const int PingFloorMs = 5;
         private const int PingCeilMs = 250;
@@ -65,6 +67,8 @@ namespace SmoothServer
             public int Target;
             public bool Congested;
             public int Samples;
+            public int InvalidSamples;
+            public float LastValidAt;
         }
 
         private static readonly Dictionary<long, PeerBudget> Budgets = new Dictionary<long, PeerBudget>();
@@ -101,6 +105,9 @@ namespace SmoothServer
                 "per-peer budget already applies. true additionally swaps " +
                 "SendBudgetModule.HighWaterBytes around each ZDOMan.SendZDOs call - only useful " +
                 "if that hook call is ever removed.");
+            _telemetryGraceSec = cfg.Bind("AdaptiveBudget", "TelemetryGraceSec", 5f,
+                "Keep the last valid per-peer target for this many seconds during a transient " +
+                "Steam status failure, then fall back to the configured static budget.");
             Watch(_floor); Watch(_ceiling); Watch(_k); Watch(_pendingBackoff);
             Watch(_smoothing); Watch(_logInterval); Watch(_callSiteSwap);
         }
@@ -153,6 +160,7 @@ namespace SmoothServer
             Smoothing = Mathf.Clamp(_smoothing.Value, 0.05f, 1f);
             LogIntervalSec = _logInterval == null ? 10f : Mathf.Max(0f, _logInterval.Value);
             UseCallSiteSwap = _callSiteSwap.Value;
+            TelemetryGraceSec = _telemetryGraceSec == null ? 5f : Mathf.Clamp(_telemetryGraceSec.Value, 0f, 60f);
         }
 
         // ---- the hook SendBudget can be pointed at (one line) ---------------------------
@@ -168,6 +176,9 @@ namespace SmoothServer
             if (_currentPeerUid == 0L) return configured;
             PeerBudget b;
             if (!Budgets.TryGetValue(_currentPeerUid, out b) || b.Samples == 0) return configured;
+            if (TelemetryGraceSec > 0f &&
+                Time.realtimeSinceStartup - b.LastValidAt > TelemetryGraceSec)
+                return configured;
             return b.Target;
         }
 
@@ -180,7 +191,9 @@ namespace SmoothServer
         internal static bool TryGetBudget(long uid, out int target, out bool congested)
         {
             PeerBudget b;
-            if (Active && Budgets.TryGetValue(uid, out b) && b.Samples > 0)
+            if (Active && Budgets.TryGetValue(uid, out b) && b.Samples > 0 &&
+                (TelemetryGraceSec <= 0f ||
+                 Time.realtimeSinceStartup - b.LastValidAt <= TelemetryGraceSec))
             {
                 target = b.Target; congested = b.Congested; return true;
             }
@@ -244,11 +257,14 @@ namespace SmoothServer
 
                 if (!s.Valid)
                 {
-                    // no Steam status for this socket (PlayFab peer, or Steam refused):
-                    // fall back to SendBudget's configured number, i.e. current behaviour.
-                    b.Target = configured;
-                    b.Samples = 0;
+                    // Keep a recently valid target through a transient status miss. The target
+                    // becomes ineligible after the grace window, so missing telemetry can never
+                    // steer the send budget forever.
+                    b.InvalidSamples++;
                     b.Congested = false;
+                    if (b.Samples == 0 ||
+                        Time.realtimeSinceStartup - b.LastValidAt > TelemetryGraceSec)
+                        b.Target = configured;
                     continue;
                 }
 
@@ -264,6 +280,7 @@ namespace SmoothServer
                 b.Target = Mathf.RoundToInt(Mathf.Lerp(b.Target, want, Smoothing));
                 b.Target = Mathf.Clamp(b.Target, FloorBytes, CeilingBytes);
                 b.Samples++;
+                b.LastValidAt = Time.realtimeSinceStartup;
             }
 
             // prune departed peers
@@ -285,8 +302,13 @@ namespace SmoothServer
             {
                 var b = kv.Value;
                 SmoothServerPlugin.Log.LogInfo(string.Format(
-                    "[AdaptiveBudget] uid={0} target={1}B ({2}) samples={3} base={4}B",
-                    kv.Key, b.Target, b.Congested ? "backing off" : "steady", b.Samples, configured));
+                    "[AdaptiveBudget] uid={0} target={1}B ({2}) samples={3} invalid={4} base={5}B " +
+                    "telemetry={6}",
+                    kv.Key, b.Target, b.Congested ? "backing off" : "steady", b.Samples,
+                    b.InvalidSamples, configured,
+                    b.Samples > 0 && (TelemetryGraceSec <= 0f ||
+                        Time.realtimeSinceStartup - b.LastValidAt <= TelemetryGraceSec)
+                        ? "live" : "fallback"));
             }
         }
     }

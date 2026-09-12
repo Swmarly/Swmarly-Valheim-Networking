@@ -50,10 +50,12 @@ namespace SmoothServer
 
         private ConfigEntry<int> _nagleMicros;
         private ConfigEntry<int> _sendBufferBytes;
+        private ConfigEntry<bool> _applyPerConnection;
 
         internal static bool Active2;
         internal static int NagleMicros = VanillaNagleMicros;
         internal static int SendBufferBytes;
+        internal static bool ApplyPerConnection = true;
 
         private static bool _registered;      // RegisterGlobalCallbacks has run at least once
         private static bool _absent;          // this side's utils interface refused us
@@ -75,15 +77,21 @@ namespace SmoothServer
                 "2097152 (2 MB) is a sane raised value for a server pushing 256 KB budgets to " +
                 "several peers. A bigger buffer buys burst headroom, not bandwidth - it cannot " +
                 "make a link faster, it can only delay the moment a send is refused.");
+            _applyPerConnection = BindSynced("ApplyPerConnection", true,
+                "Apply NagleTime and an optional send buffer to already-connected Steam peers. " +
+                "Global settings remain the connect-time default.");
         }
 
         protected override void ApplyPatches()
         {
             ReadConfig();
+            _absent = false;
+            _lastReadback = null;
 
             var reg = AccessTools.Method(typeof(ZSteamSocket), "RegisterGlobalCallbacks");
             if (reg == null)
                 throw new Exception("SmoothServer LowLatency: ZSteamSocket.RegisterGlobalCallbacks not found");
+            PatchGuard.RequireExclusive(reg, "ZSteamSocket.RegisterGlobalCallbacks");
 
             Harmony.Patch(reg, postfix: new HarmonyMethod(typeof(LowLatencyModule), nameof(Postfix)));
 
@@ -101,12 +109,14 @@ namespace SmoothServer
         public override void Disable()
         {
             Active2 = false;
+            _absent = false;
+            _lastReadback = null;
             base.Disable();
         }
 
         public override void OnConfigChanged(ConfigEntryBase entry)
         {
-            if (entry != _nagleMicros && entry != _sendBufferBytes) return;
+            if (entry != _nagleMicros && entry != _sendBufferBytes && entry != _applyPerConnection) return;
             ReadConfig();
             if (_registered) Apply("config changed");
             else Log.LogInfo("[LowLatency] config changed -> nagleMicros=" + NagleMicros +
@@ -125,6 +135,7 @@ namespace SmoothServer
         {
             NagleMicros = Math.Max(0, Math.Min(100000, _nagleMicros.Value));
             SendBufferBytes = Math.Max(0, _sendBufferBytes.Value);
+            ApplyPerConnection = _applyPerConnection.Value;
         }
 
         private static void Postfix()
@@ -155,13 +166,47 @@ namespace SmoothServer
             int afterNagle = Read(server, ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_NagleTime);
             int afterBuf = Read(server, ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_SendBufferSize);
 
+            int connectionSets = ApplyExistingConnections();
             _lastReadback = "NagleTime " + Show(beforeNagle) + " -> " + Show(afterNagle) + " us" +
-                            " | SendBufferSize " + Show(beforeBuf) + " -> " + Show(afterBuf) + " B";
+                            " | SendBufferSize " + Show(beforeBuf) + " -> " + Show(afterBuf) + " B" +
+                            " | connectionSets=" + connectionSets;
 
             SmoothServerPlugin.Log.LogInfo("[LowLatency] (" + (server ? "server" : "client") + ", " + which +
                 ", " + why + ") " + _lastReadback +
                 "  wroteNagle=" + wroteNagle + " wroteSendBuffer=" + (SendBufferBytes > 0 ? wroteBuf.ToString() : "skipped(0)") +
                 (afterNagle == 0 ? "  -- Nagle is OFF" : ""));
+        }
+
+        private static int ApplyExistingConnections()
+        {
+            if (!ApplyPerConnection || ZNet.instance == null) return 0;
+
+            int applied = 0;
+            try
+            {
+                foreach (var peer in ZNet.instance.GetConnectedPeers())
+                {
+                    var socket = SteamTransport.AsSteamSocket(peer != null ? peer.m_socket : null);
+                    if (socket == null) continue;
+
+                    uint handle;
+                    if (!SteamTransport.TryGetConnectionHandle(socket, out handle)) continue;
+
+                    string reason;
+                    if (SteamTransport.TrySetConnectionConfig(
+                            "k_ESteamNetworkingConfig_NagleTime", NagleMicros, handle, out reason))
+                        applied++;
+                    if (SendBufferBytes > 0 &&
+                        SteamTransport.TrySetConnectionConfig(
+                            "k_ESteamNetworkingConfig_SendBufferSize", SendBufferBytes, handle, out reason))
+                        applied++;
+                }
+            }
+            catch (Exception e)
+            {
+                SmoothServerPlugin.Log.LogWarning("[LowLatency] existing-peer application failed: " + e.Message);
+            }
+            return applied;
         }
 
         private static string Show(int v)

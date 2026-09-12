@@ -129,7 +129,7 @@ namespace SmoothServer.Net
             var net = ZNet.instance;
             if (net == null) return false;
             var peer = net.GetPeer(peerUid);
-            var sock = peer != null ? peer.m_socket as ZSteamSocket : null;
+            var sock = peer != null ? SteamTransport.AsSteamSocket(peer.m_socket) : null;
             if (sock == null) return false;
             PeerState st;
             return States.TryGetValue(sock, out st) && st.SendFramed;
@@ -161,6 +161,7 @@ namespace SmoothServer.Net
 
             var send = AccessTools.Method(typeof(ZSteamSocket), "SendQueuedPackages");
             if (send == null) throw new Exception("ZSteamSocket.SendQueuedPackages not found");
+            PatchGuard.RequireExclusive(send, "ZSteamSocket.SendQueuedPackages");
             var recv = AccessTools.Method(typeof(ZSteamSocket), "Recv");
             if (recv == null) throw new Exception("ZSteamSocket.Recv not found");
             var rrpcCtor = AccessTools.Constructor(typeof(ZRoutedRpc), new[] { typeof(bool) });
@@ -444,7 +445,7 @@ namespace SmoothServer.Net
 
         private static void DisconnectPrefix(ZNetPeer peer)
         {
-            var s = peer != null ? peer.m_socket as ZSteamSocket : null;
+            var s = peer != null ? SteamTransport.AsSteamSocket(peer.m_socket) : null;
             if (s != null && States.Remove(s)) RecountFramed();
         }
 
@@ -483,7 +484,7 @@ namespace SmoothServer.Net
             var net = ZNet.instance;
             if (net == null) return null;
             var peer = net.GetPeer(peerId);
-            return peer != null ? peer.m_socket as ZSteamSocket : null;
+            return peer != null ? SteamTransport.AsSteamSocket(peer.m_socket) : null;
         }
 
         private static ZNetPeer PeerOf(ZSteamSocket socket)
@@ -491,7 +492,7 @@ namespace SmoothServer.Net
             var net = ZNet.instance;
             if (net == null || socket == null) return null;
             foreach (var peer in net.GetConnectedPeers())
-                if (peer != null && peer.m_socket == socket) return peer;
+                if (peer != null && SteamTransport.AsSteamSocket(peer.m_socket) == socket) return peer;
             return null;
         }
 
@@ -502,7 +503,7 @@ namespace SmoothServer.Net
             var peers = new List<ZNetPeer>();
             foreach (var peer in net.GetConnectedPeers())
             {
-                var sock = peer != null ? peer.m_socket as ZSteamSocket : null;
+                var sock = peer != null ? SteamTransport.AsSteamSocket(peer.m_socket) : null;
                 PeerState state;
                 if (sock != null && States.TryGetValue(sock, out state) &&
                     (state.SendFramed || state.RecvFramed)) peers.Add(peer);
@@ -620,7 +621,7 @@ namespace SmoothServer.Net
                 {
                     foreach (var peer in net.GetConnectedPeers())
                     {
-                        var sock = peer.m_socket as ZSteamSocket;
+                        var sock = SteamTransport.AsSteamSocket(peer.m_socket);
                         if (sock == null) continue;
                         var st = Get(sock, true);
                         if (st.SentCaps || st.CapsSeen) continue;

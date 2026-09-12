@@ -78,11 +78,18 @@ namespace SmoothServer
                 SmoothServerPlugin.ReplacementsAllowed = Compat.ReplacementsAllowed;
 
                 if (!surfaceOk)
+                {
                     log.LogError("[ValheimTuneBridge] runtime compatibility validation failed: " + validation);
-                else if (!known && Cfg.DisableOnUnknownBuild.Value)
+                    log.LogWarning("[ValheimTuneBridge] replacement patches are inactive; " +
+                                   "KnownGoodBuilds is only a verification record (" +
+                                   Cfg.KnownGoodBuilds.Value + ")");
+                }
+                else if (!known)
+                {
                     log.LogWarning("[ValheimTuneBridge] " + Compat.GameVersion +
-                                   " passed structural checks but is not explicitly listed in " +
-                                   "KnownGoodBuilds; replacements remain disabled");
+                                   " is not listed in KnownGoodBuilds, but the validated runtime " +
+                                   "surface is unchanged; structurally compatible hotfixes remain active");
+                }
 
                 if (SmoothServerPlugin.ConflictingNetworkingModPresent)
                 {
@@ -93,9 +100,8 @@ namespace SmoothServer
 
                 if (!SmoothServerPlugin.ReplacementsAllowed)
                 {
-                    log.LogWarning("[ValheimTuneBridge] game " + Compat.GameVersion +
-                                   " is not in KnownGoodBuilds (" + Cfg.KnownGoodBuilds.Value +
-                                   "); all optional replacement patches will stay inactive");
+                    log.LogWarning("[ValheimTuneBridge] replacement patches remain inactive because " +
+                                   "runtime validation failed; this is not a KnownGoodBuilds lookup failure");
                     return;
                 }
 

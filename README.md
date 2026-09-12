@@ -10,9 +10,7 @@ and FiresGhettoNetworking into a single server-first networking/performance stac
 - BepInEx 5.4.2350
 - Linux and Windows dedicated servers
 
-The compatibility gate defaults to safe mode. If Valheim changes its internal method signatures,
-replacement patches are disabled and the server falls back to vanilla behaviour instead of
-continuing with unverified IL.
+The compatibility gate validates the live method, field, signature, and IL surface at startup. Compatible hotfixes can continue automatically; a fundamental internal or protocol change fails closed and leaves the affected replacements vanilla.
 
 ## What is included
 
@@ -20,12 +18,12 @@ continuing with unverified IL.
 
 - Per-peer adaptive ZDO send budgets
 - Queue back-pressure and recovery
-- Fixed-rate all-peer send cadence
+- Fair paced per-peer send cadence with bounded catch-up work
 - Steam send-rate and buffer tuning
 - Optional Nagle/low-latency tuning
 - Zstandard compression with vanilla-peer fallback (plain zstd in the first package)
 - Dirty-set synchronization with watchdog recovery
-- TargetPortal compatibility: its explicit portal ZDO sends and portal-travel removals use the vanilla sync-list path
+- TargetPortal compatibility: its explicit portal ZDO sends and portal-travel removals use the vanilla sync-list path; the networking scheduler does not replace those forced sends
 - Relay throttling for low-priority objects
 - Top-K send selection during large joins
 - Receive packet caps
@@ -94,3 +92,12 @@ the required third-party license notices.
 - ServerSync and other inherited third-party components retain their upstream notices
 
 This project is not affiliated with Iron Gate or Coffee Stain.
+
+
+## Runtime diagnostics
+
+PeerTelemetry and StatsLog report whether Steam status is live or unavailable, the selected
+Steam interface, connection queue bytes, pending reliable/unreliable bytes, in-flight reliable
+bytes, Steam's send-rate estimate, ZDO queue state, adaptive budget state, compression state,
+and frame-time statistics. Adaptive budgets use static configured limits whenever live status is
+not available; they never pretend zero samples are adaptive control data.

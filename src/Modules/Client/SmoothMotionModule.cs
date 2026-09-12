@@ -129,6 +129,7 @@ namespace SmoothServer
             if (target == null)
                 throw new Exception("SmoothServer SmoothMotion: ZSyncTransform.SyncPosition not found " +
                                     "- the game's interpolation was rewritten, refusing to patch");
+            PatchGuard.RequireExclusive(target, "ZSyncTransform.SyncPosition");
 
             var pars = target.GetParameters();
             if (pars.Length != 3 || pars[0].ParameterType != typeof(ZDO) || pars[1].ParameterType != typeof(float))

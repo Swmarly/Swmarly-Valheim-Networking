@@ -6,48 +6,50 @@ using UnityEngine;
 namespace SmoothServer
 {
     /// <summary>
-    /// C1 - send cadence.
-    ///
-    /// Vanilla ZDOMan.SendZDOToPeers2(float dt) (0.221.12, verified against the decompile):
-    ///   m_sendTimer += dt;
-    ///   if (m_nextSendPeer &lt; 0) { if (m_sendTimer &gt; 0.05f) { m_nextSendPeer = 0; m_sendTimer = 0; } return; }
-    ///   if (m_nextSendPeer &lt; m_peers.Count) SendZDOs(m_peers[m_nextSendPeer], false);
-    ///   m_nextSendPeer++; if (m_nextSendPeer &gt;= m_peers.Count) m_nextSendPeer = -1;
-    /// i.e. ONE peer per frame, and the 0.05s gate only restarts the round-robin.
-    /// With N peers a full sweep costs one 50ms gate + N frames.
-    ///
-    /// Ours: every 1/SendHz seconds, send to EVERY peer in the same frame.
-    /// Priority.High so we run before BetterNetworking's prefix on the same method -
-    /// while this module is on, BetterNetworking's "Update Rate" setting is INERT
-    /// (its prefix never runs; its Steamworks send-rate tuning is unaffected).
+    /// C1 - paced per-peer ZDO send cadence. Vanilla advances one peer per frame;
+    /// the previous replacement swept every peer in one frame. This scheduler preserves
+    /// aggregate cadence for normal 5-6 player server ticks, rotates peers fairly, and
+    /// bounds catch-up work after a hitch.
     /// </summary>
     internal sealed class SendCadenceModule : FeatureModule
     {
         public override string Name => "SendCadence";
 
         private ConfigEntry<float> _sendHz;
+        private ConfigEntry<int> _maxPeerSendsPerFrame;
 
         internal static bool Active;
         internal static float SendHz = 20f;
+        internal static int MaxPeerSendsPerFrame;
+
+        private static ZDOMan _owner;
+        private static float _sendDebt;
+        private static int _cursor;
+        private static float _failureLogAt;
+        private static int _sendFailures;
 
         public override void Configure(ConfigFile cfg)
         {
             EnabledCfg = cfg.Bind("SendCadence", "Enabled", true,
-                "Replace vanilla's one-peer-per-frame ZDO send round-robin with a fixed-rate " +
-                "sweep over all peers. While on, BetterNetworking's Update Rate option is inert.");
+                "Pace ZDO sends fairly across peers instead of sweeping every peer in one frame.");
             _sendHz = cfg.Bind("SendCadence", "SendHz", 20f,
-                "Times per second the server pushes ZDO updates to every peer. Vanilla is " +
-                "effectively 20Hz divided by peer count. Clamped to 1-60." + Profiles.Note);
+                "Per-peer ZDO send frequency. The scheduler rotates peers and preserves this " +
+                "aggregate rate where the frame budget permits. Clamped to 1-60." + Profiles.Note);
+            _maxPeerSendsPerFrame = cfg.Bind("SendCadence", "MaxPeerSendsPerFrame", 0,
+                "Safety cap for peer SendZDOs calls in one frame. 0 = automatic cap (up to four " +
+                "peers per frame, enough to preserve 20Hz for 5-6 peers at a 30Hz server tick). " +
+                "Raise only after measuring frame time.");
             Watch(_sendHz);
+            Watch(_maxPeerSendsPerFrame);
         }
 
         protected override void ApplyPatches()
         {
-            SendHz = Mathf.Clamp(_sendHz.Value, 1f, 60f);
-
+            ReadConfig();
             var target = AccessTools.Method(typeof(ZDOMan), "SendZDOToPeers2", new[] { typeof(float) });
             if (target == null)
                 throw new Exception("SmoothServer SendCadence: ZDOMan.SendZDOToPeers2(float) not found");
+            PatchGuard.RequireExclusive(target, "ZDOMan.SendZDOToPeers2");
 
             Harmony.Patch(target,
                 prefix: new HarmonyMethod(typeof(SendCadenceModule), nameof(Prefix))
@@ -55,54 +57,109 @@ namespace SmoothServer
                     priority = Priority.High
                 });
 
+            ResetScheduler();
             Active = true;
             Log.LogInfo("[SendCadence] SendHz=" + SendHz.ToString("F1") +
-                        " (interval " + (1000f / SendHz).ToString("F1") + "ms), priority=High");
+                        " maxPeerSendsPerFrame=" +
+                        (MaxPeerSendsPerFrame > 0 ? MaxPeerSendsPerFrame.ToString() : "auto(4)"));
         }
 
         public override void Disable()
         {
             Active = false;
+            ResetScheduler();
             base.Disable();
         }
 
         public override void OnConfigChanged(ConfigEntryBase entry)
         {
-            if (entry != _sendHz) return;
+            if (entry != _sendHz && entry != _maxPeerSendsPerFrame) return;
+            ReadConfig();
+            Log.LogInfo("[SendCadence] SendHz=" + SendHz.ToString("F1") +
+                        " maxPeerSendsPerFrame=" +
+                        (MaxPeerSendsPerFrame > 0 ? MaxPeerSendsPerFrame.ToString() : "auto(4)"));
+        }
+
+        private void ReadConfig()
+        {
             SendHz = Mathf.Clamp(_sendHz.Value, 1f, 60f);
-            Log.LogInfo("[SendCadence] SendHz -> " + SendHz.ToString("F1") +
-                        " (interval " + (1000f / SendHz).ToString("F1") + "ms)");
+            MaxPeerSendsPerFrame = Math.Max(0, _maxPeerSendsPerFrame.Value);
+        }
+
+        private static void ResetScheduler()
+        {
+            _owner = null;
+            _sendDebt = 0f;
+            _cursor = 0;
+            _failureLogAt = 0f;
+            _sendFailures = 0;
+        }
+
+        private static int AutomaticCap(int peerCount)
+        {
+            return Math.Max(1, Math.Min(peerCount, 4));
         }
 
         private static bool Prefix(ZDOMan __instance, float dt)
         {
-            if (!Active) return true;
-            if (!ServerActive()) return true;
+            if (!Active || !ServerActive()) return true;
 
             var peers = __instance.m_peers;
-            if (peers.Count == 0)
+            int peerCount = peers == null ? 0 : peers.Count;
+            if (peerCount == 0)
             {
                 __instance.m_nextSendPeer = -1;
+                if (_owner == __instance) ResetScheduler();
                 return false;
             }
 
-            __instance.m_sendTimer += dt;
-            float interval = 1f / SendHz;
-            if (__instance.m_sendTimer >= interval)
+            if (_owner != __instance)
             {
-                __instance.m_sendTimer -= interval;
-                if (__instance.m_sendTimer > interval * 4f) __instance.m_sendTimer = 0f;
-                for (int i = 0; i < peers.Count; i++)
+                _owner = __instance;
+                _sendDebt = 0f;
+                _cursor = 0;
+            }
+
+            dt = Mathf.Clamp(dt, 0f, 0.25f);
+            _sendDebt += dt * SendHz * peerCount;
+            float maxDebt = peerCount * 4f;
+            if (_sendDebt > maxDebt) _sendDebt = maxDebt;
+
+            int due = Mathf.FloorToInt(_sendDebt);
+            if (due > 0)
+            {
+                int cap = MaxPeerSendsPerFrame > 0
+                    ? Math.Min(MaxPeerSendsPerFrame, peerCount)
+                    : AutomaticCap(peerCount);
+                if (due > cap) due = cap;
+                _sendDebt -= due;
+
+                for (int i = 0; i < due; i++)
                 {
-                    try { __instance.SendZDOs(peers[i], false); }
+                    if (_cursor >= peerCount) _cursor = 0;
+                    var peer = peers[_cursor++];
+                    if (peer == null) continue;
+
+                    try
+                    {
+                        // SendZDOs may return void or bool across compatible Valheim releases.
+                        __instance.SendZDOs(peer, false);
+                    }
                     catch (Exception e)
                     {
-                        SmoothServerPlugin.Log.LogWarning("[SendCadence] peer send failed: " + e.Message);
+                        _sendFailures++;
+                        float now = Time.realtimeSinceStartup;
+                        if (now >= _failureLogAt)
+                        {
+                            _failureLogAt = now + 10f;
+                            SmoothServerPlugin.Log.LogWarning("[SendCadence] " + _sendFailures +
+                                " peer-send calls failed in the last window; latest=" + e.Message);
+                            _sendFailures = 0;
+                        }
                     }
                 }
             }
 
-            // vanilla's round-robin cursor stays parked so nothing else half-drives it
             __instance.m_nextSendPeer = -1;
             return false;
         }

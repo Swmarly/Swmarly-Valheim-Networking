@@ -5,7 +5,7 @@ Unified server-first Valheim networking and performance tuning.
 ## Features
 
 - Adaptive per-peer send budgets and queue recovery
-- Fixed-rate all-peer synchronization
+- Fair paced per-peer synchronization with bounded catch-up work
 - Zstandard compression with vanilla-peer fallback
 - Dirty-set synchronization, relay throttling, and Top-K selection
 - Receive caps and persistent diagnostics
@@ -23,4 +23,12 @@ Remove SmoothServer, ValheimTune, FiresGhettoNetworking, BetterNetworking, Serve
 Serverside Simulations before enabling this package. Those mods patch overlapping Valheim
 networking/map methods.
 
-Target build: Valheim 1.0.7 / network version 39 / BepInEx 5.4.2350.
+Validated target: Valheim 1.0.12 / network version 40 / BepInEx 5.4.2350. Compatible hotfixes are checked by live structural validation; fundamental changes fail closed.
+
+ 
+## Diagnostics
+
+Peer telemetry records the Steam status source or failure reason, per-peer RTT/quality,
+pending reliable and unreliable bytes, in-flight reliable bytes, socket queue, ZDO queue,
+adaptive target, congestion state, and compression state. Missing Steam status falls back to a
+static budget rather than being treated as adaptive data.

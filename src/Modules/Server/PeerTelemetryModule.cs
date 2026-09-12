@@ -45,6 +45,7 @@ namespace SmoothServer
             public long Uid;
             public string PlayerName;
             public bool Valid;              // Steam real-time status answered
+            public string SteamStatus;       // source or precise failure reason
             public int Ping;                // ms
             public float QualityLocal;
             public float QualityRemote;
@@ -181,7 +182,8 @@ namespace SmoothServer
                     ZdoQueue = zp.m_zdos.Count,
                     ForceSend = zp.m_forceSend.Count,
                     InvalidSector = zp.m_invalidSector.Count,
-                    SampledAt = now
+                    SampledAt = now,
+                    SteamStatus = "not-probed"
                 };
 
                 var sock = zp.m_peer.m_socket;
@@ -191,50 +193,59 @@ namespace SmoothServer
                     catch { stat.SocketQueueBytes = -1; }
                 }
 
-                var zs = sock as ZSteamSocket;
+                var zs = SteamTransport.AsSteamSocket(sock);
                 if (zs != null)
                 {
-                    if (!_qualityAbsent)
+                    SteamNetConnectionRealTimeStatus_t realtime;
+                    string statusReason;
+                    if (TryRealTimeStatus(zs, out realtime, out statusReason))
                     {
-                        try
+                        stat.Valid = true;
+                        stat.SteamStatus = _steamIface == 2 ? "game-server" : "user";
+                        stat.PendingReliable = realtime.m_cbPendingReliable;
+                        stat.PendingUnreliable = realtime.m_cbPendingUnreliable;
+                        stat.SentUnackedReliable = realtime.m_cbSentUnackedReliable;
+                        stat.SendRateBytesPerSec = realtime.m_nSendRateBytesPerSecond;
+                        stat.Ping = realtime.m_nPing;
+                        stat.QualityLocal = realtime.m_flConnectionQualityLocal;
+                        stat.QualityRemote = realtime.m_flConnectionQualityRemote;
+                        stat.OutBytesPerSec = realtime.m_flOutBytesPerSec;
+                        stat.InBytesPerSec = realtime.m_flInBytesPerSec;
+                    }
+                    else
+                    {
+                        stat.SteamStatus = statusReason;
+                        // A listen-host/client may still have a working vanilla quality accessor.
+                        // It is not marked Valid because AdaptiveBudget requires richer status.
+                        if (!SmoothServerPlugin.IsServerSide && !_qualityAbsent)
                         {
-                            float ql, qr, ob, ib; int ping;
-                            zs.GetConnectionQuality(out ql, out qr, out ping, out ob, out ib);
-                            stat.QualityLocal = ql; stat.QualityRemote = qr; stat.Ping = ping;
-                            stat.OutBytesPerSec = ob; stat.InBytesPerSec = ib;
-                        }
-                        catch (Exception e)
-                        {
-                            // On the dedicated-server build this is vanilla calling the client
-                            // interface (see the class comment): it will never work here, so latch
-                            // it off. Any other failure is a socket closing mid-sample - transient.
-                            if (e.Message != null && e.Message.IndexOf("not initialized",
-                                    StringComparison.OrdinalIgnoreCase) >= 0)
+                            try
                             {
-                                _qualityAbsent = true;
-                                SmoothServerPlugin.Log.LogInfo("[PeerTelemetry] ZSteamSocket.GetConnectionQuality " +
-                                    "is unusable on this build (" + e.Message.Trim() + ") - ping/quality come from " +
-                                    "GetConnectionRealTimeStatus instead");
+                                float ql, qr, ob, ib; int ping;
+                                zs.GetConnectionQuality(out ql, out qr, out ping, out ob, out ib);
+                                stat.QualityLocal = ql;
+                                stat.QualityRemote = qr;
+                                stat.Ping = ping;
+                                stat.OutBytesPerSec = ob;
+                                stat.InBytesPerSec = ib;
+                                stat.SteamStatus = "vanilla-quality-only";
+                            }
+                            catch (Exception ex)
+                            {
+                                if (ex.Message != null && ex.Message.IndexOf("not initialized",
+                                        StringComparison.OrdinalIgnoreCase) >= 0)
+                                    _qualityAbsent = true;
                             }
                         }
                     }
-
-                    SteamNetConnectionRealTimeStatus_t st;
-                    if (TryRealTimeStatus(zs, out st))
-                    {
-                        stat.Valid = true;
-                        stat.PendingReliable = st.m_cbPendingReliable;
-                        stat.PendingUnreliable = st.m_cbPendingUnreliable;
-                        stat.SentUnackedReliable = st.m_cbSentUnackedReliable;
-                        stat.SendRateBytesPerSec = st.m_nSendRateBytesPerSecond;
-                        // On the server build GetConnectionQuality cannot answer, so take the same
-                        // five numbers off the real-time status instead.
-                        if (stat.Ping == 0) stat.Ping = st.m_nPing;
-                        if (stat.QualityLocal == 0f) stat.QualityLocal = st.m_flConnectionQualityLocal;
-                        if (stat.QualityRemote == 0f) stat.QualityRemote = st.m_flConnectionQualityRemote;
-                        if (stat.OutBytesPerSec == 0f) stat.OutBytesPerSec = st.m_flOutBytesPerSec;
-                        if (stat.InBytesPerSec == 0f) stat.InBytesPerSec = st.m_flInBytesPerSec;
-                    }
+                }
+                else if (sock == null)
+                {
+                    stat.SteamStatus = "no-socket";
+                }
+                else
+                {
+                    stat.SteamStatus = "transport:" + SteamTransport.Describe(sock);
                 }
 
                 Stats[stat.Uid] = stat;
@@ -251,50 +262,80 @@ namespace SmoothServer
             }
         }
 
-        private static bool TryRealTimeStatus(ZSteamSocket zs, out SteamNetConnectionRealTimeStatus_t status)
+        private static bool TryRealTimeStatus(ZSteamSocket zs,
+            out SteamNetConnectionRealTimeStatus_t status, out string reason)
         {
             status = default(SteamNetConnectionRealTimeStatus_t);
-            SteamNetConnectionRealTimeLaneStatus_t lanes = default(SteamNetConnectionRealTimeLaneStatus_t);
+            reason = "status unavailable";
+
+            uint handle;
+            if (!SteamTransport.TryGetConnectionHandle(zs, out handle))
+            {
+                reason = "connection handle unavailable";
+                return false;
+            }
 
             if (_steamIface == -1)
             {
-                if (Time.realtimeSinceStartup < _ifaceRetryAt) return false;
+                if (Time.realtimeSinceStartup < _ifaceRetryAt)
+                {
+                    reason = "Steam status interface unavailable; retry pending";
+                    return false;
+                }
                 _steamIface = 0;
             }
 
-            // Probe the interface this build is compiled against first: game-server on a dedicated
-            // server, user on a client. The other one throws rather than returning a bad EResult,
-            // so ordering only costs one exception at startup - but it also means we never latch
-            // on to the wrong one.
             bool serverFirst = SmoothServerPlugin.IsServerSide;
+            string firstReason = null;
 
             if (_steamIface == 0 || _steamIface == (serverFirst ? 2 : 1))
-                if (Probe(serverFirst, zs, ref status, ref lanes)) return true;
+            {
+                if (Probe(serverFirst, zs, out status, out reason)) return true;
+                firstReason = reason;
+            }
 
             if (_steamIface == 0 || _steamIface == (serverFirst ? 1 : 2))
-                if (Probe(!serverFirst, zs, ref status, ref lanes)) return true;
+            {
+                if (Probe(!serverFirst, zs, out status, out reason)) return true;
+            }
 
-            if (_steamIface == 0) SetIface(-1, "neither interface answered GetConnectionRealTimeStatus");
+            if (string.IsNullOrEmpty(reason)) reason = firstReason ?? "no Steam interface answered";
+            if (_steamIface == 0)
+                SetIface(-1, "neither interface answered GetConnectionRealTimeStatus");
             return false;
         }
 
         private static bool Probe(bool gameServer, ZSteamSocket zs,
-            ref SteamNetConnectionRealTimeStatus_t status, ref SteamNetConnectionRealTimeLaneStatus_t lanes)
+            out SteamNetConnectionRealTimeStatus_t status, out string reason)
         {
+            status = default(SteamNetConnectionRealTimeStatus_t);
+            reason = null;
+            string label = gameServer ? "game-server" : "user";
+
             try
             {
-                EResult r = gameServer
-                    ? SteamGameServerNetworkingSockets.GetConnectionRealTimeStatus(zs.m_con, ref status, 0, ref lanes)
-                    : SteamNetworkingSockets.GetConnectionRealTimeStatus(zs.m_con, ref status, 0, ref lanes);
-                if (r == EResult.k_EResultOK)
+                SteamNetConnectionRealTimeLaneStatus_t lanes =
+                    default(SteamNetConnectionRealTimeLaneStatus_t);
+                EResult result = gameServer
+                    ? SteamGameServerNetworkingSockets.GetConnectionRealTimeStatus(zs.m_con, ref status, 0,
+                        ref lanes)
+                    : SteamNetworkingSockets.GetConnectionRealTimeStatus(zs.m_con, ref status, 0,
+                        ref lanes);
+                if (result == EResult.k_EResultOK)
                 {
                     SetIface(gameServer ? 2 : 1, gameServer
                         ? "SteamGameServerNetworkingSockets (game-server interface)"
                         : "SteamNetworkingSockets (user interface)");
                     return true;
                 }
+
+                reason = label + " interface returned " + result;
             }
-            catch { /* that half of Steamworks is not initialised in this process */ }
+            catch (Exception ex)
+            {
+                reason = label + " interface exception " + ex.GetType().Name +
+                         (string.IsNullOrEmpty(ex.Message) ? "" : ": " + ex.Message);
+            }
             return false;
         }
 
@@ -337,7 +378,7 @@ namespace SmoothServer
                     s.OutBytesPerSec / 1024f, s.InBytesPerSec / 1024f,
                     s.PendingReliable, s.PendingUnreliable, s.SentUnackedReliable,
                     s.SendRateBytesPerSec, s.SocketQueueBytes, s.ZdoQueue, s.ForceSend, s.InvalidSector,
-                    s.Valid ? "" : " (steam status unavailable)"));
+                    " status=" + s.SteamStatus));
             }
         }
     }
