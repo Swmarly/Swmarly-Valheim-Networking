@@ -78,6 +78,24 @@ jobs:
             --expected-game-version 1.0.12 \
             --expected-network-version 40
 
+      - name: Export Valheim 1.0.12 compatibility evidence
+        run: |
+          set -euo pipefail
+          mkdir -p compat-evidence
+          "$RUNNER_TEMP/ilspycmd/ilspycmd" --type Version lib/assembly_valheim.dll > compat-evidence/Version.cs.txt
+          "$RUNNER_TEMP/ilspycmd/ilspycmd" --ilcode --type Version lib/assembly_valheim.dll > compat-evidence/Version.il.txt
+          "$RUNNER_TEMP/ilspycmd/ilspycmd" --type ZDOMan lib/assembly_valheim.dll > compat-evidence/ZDOMan.cs.txt
+          "$RUNNER_TEMP/ilspycmd/ilspycmd" --ilcode --type ZDOMan lib/assembly_valheim.dll > compat-evidence/ZDOMan.il.txt
+          "$RUNNER_TEMP/ilspycmd/ilspycmd" --type ZSyncTransform lib/assembly_valheim.dll > compat-evidence/ZSyncTransform.cs.txt
+          "$RUNNER_TEMP/ilspycmd/ilspycmd" --ilcode --type ZSyncTransform lib/assembly_valheim.dll > compat-evidence/ZSyncTransform.il.txt
+
+      - name: Upload Valheim 1.0.12 compatibility evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: valheim-1.0.12-compat-evidence
+          path: compat-evidence/
+          if-no-files-found: error
+
       - name: Build Swmarly Valheim Networking
         run: dotnet build src -c Release -p:ValheimManagedDir="${{ github.workspace }}/lib" -p:BepInExCoreDir="${{ github.workspace }}/lib"
 
