@@ -90,6 +90,7 @@ namespace SmoothServer
             var target = AccessTools.Method(typeof(ZSteamSocket), "RegisterGlobalCallbacks");
             if (target == null)
                 throw new Exception("SmoothServer SteamRates: ZSteamSocket.RegisterGlobalCallbacks not found");
+            PatchGuard.RequireExclusive(target, "ZSteamSocket.RegisterGlobalCallbacks");
 
             Harmony.Patch(target,
                 postfix: new HarmonyMethod(typeof(SteamRatesModule), nameof(Postfix)));
