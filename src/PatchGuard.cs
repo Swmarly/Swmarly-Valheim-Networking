@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Exclusive-owner checks for high-risk Harmony seams.
+// Why it exists: Multiple mods replacing the same networking method can each report success while composing unsafe behavior; the guard makes overlap a visible stop condition.
+// Change contract: Add new critical targets here or explicitly justify why a target can be shared.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Reflection;
