@@ -9,7 +9,7 @@ replacement features stay vanilla. KnownGoodBuilds records explicitly verified r
 | Area | Selected implementation | Notes |
 | --- | --- | --- |
 | ZDO send cadence and budgets | SmoothServer | Fixed cadence, adaptive per-peer budgets, queue back-pressure, and Steam rate tuning share one owner for the overlapping send path. |
-| Changed-object discovery | ValheimTune | Dirty revision sets, periodic reconciliation, relay throttling, and a watchdog that falls back to vanilla scanning. TargetPortal automatically selects the vanilla sync-list path so forced portal ZDO sends and portal-travel cleanup are preserved. |
+| Changed-object discovery | ValheimTune | Dirty revision sets, periodic reconciliation, relay throttling, and a watchdog that falls back to vanilla scanning. With TargetPortal, ordinary rounds stay dirty-set based; tracked ForceSendZDO events use one vanilla sync-list pass per affected peer, preserving forced portal advertisements and invalid-sector cleanup. If the ForceSend surface cannot be proven, the whole path falls back to vanilla. |
 | Candidate prioritization | ValheimTune | Top-K selection replaces a full sort only when enabled and only on the server. |
 | Receive protection | ValheimTune | Optional per-peer packet cap prevents one busy connection monopolising a frame. |
 | Transport compression | Unified implementation | Explicit frame tags, negotiated dictionary hash, vanilla-peer fallback, and double-compression protection. |
