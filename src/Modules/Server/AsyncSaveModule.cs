@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Server save timing instrumentation and narrowly validated save hooks.
+// Why it exists: World saves can create visible stalls; measuring the main-thread and background halves identifies the real cost without replacing Valheim's save format.
+// Change contract: GetSaveClone pre-sizing is version-dependent and must remain disabled when the method is absent.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
