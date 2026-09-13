@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Lifecycle bridge that preflights Valheim, installs selected ValheimTune patches, runs watchdog/stat ticks, and owns TargetPortal hook installation.
+// Why it exists: The merged plugin must have one owner for overlapping seams while still reusing safe ValheimTune components; this bridge is the boundary between global validation and module-local features.
+// Change contract: A failed preflight or patch application must leave the bridge unpatched; update the validator when the game internals change.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
