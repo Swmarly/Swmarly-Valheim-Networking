@@ -5,6 +5,8 @@
 - Routed each affected portal force-send through one vanilla CreateSyncList pass, preserving TargetPortal advertisements and portal-departure invalid-sector cleanup.
 - Kept the fail-closed fallback: if either ForceSendZDO overload is absent or ambiguous, the full vanilla sync-list path is used.
 - Added [Sync] TargetPortalAwareSync to allow an explicit full-vanilla diagnostic fallback.
+- Fixed Harmony prefix/postfix state transport so TargetPortal force markers and full-scan queue refills can coexist.
+- Prevented stale forced-send markers from accumulating when portal-aware sync is disabled by configuration.
 
 ## 0.1.11 — deep networking quality pass
 
