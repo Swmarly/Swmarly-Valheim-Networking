@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Reflection-tolerant Steam socket unwrapping, interface selection, handle extraction, and diagnostics.
+// Why it exists: Other mods can wrap ZSteamSocket; telemetry/tuning must find the underlying socket and choose server/client Steam APIs without assuming one concrete type.
+// Change contract: Every fallback must report unavailable rather than inventing transport data.
+// -----------------------------------------------------------------------------
 using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
