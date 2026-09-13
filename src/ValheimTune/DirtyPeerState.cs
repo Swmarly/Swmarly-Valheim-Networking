@@ -10,13 +10,18 @@ namespace ValheimTune
         private float _lastFullScan = float.NegativeInfinity;
         private bool _wasActive;
         private readonly List<TId> _prune = new List<TId>();
+        private readonly Queue<TId> _work = new Queue<TId>();
 
         public HashSet<TId> Pending { get; } = new HashSet<TId>();
         public int FullScans { get; private set; }
 
+        public void Enqueue(TId id)
+        {
+            if (Pending.Add(id)) _work.Enqueue(id);
+        }
+
         // active reflects whether DirtySets was actually in effect (not disabled by the watchdog)
-        // on this call. Coming back from an inactive round always forces a full scan, since Pending
-        // was not being fed while inactive and may be stale.
+        // on this call. Coming back from an inactive round always forces a full scan.
         public bool NeedsFullScan((int x, int y) zone, float now, float reconcileSeconds, bool active)
         {
             bool full = !_wasActive || zone != _lastZone || now - _lastFullScan > reconcileSeconds;
@@ -30,30 +35,57 @@ namespace ValheimTune
             return full;
         }
 
-        public void Drain(List<TId> into, Func<TId, bool> exists, Func<TId, bool> inArea,
-                          Func<TId, bool> shouldSend, Func<TId, bool> deferSend = null,
-                          Action<TId> onInvalid = null)
+        public int Drain(List<TId> into, Func<TId, bool> exists, Func<TId, bool> inArea,
+                         Func<TId, bool> shouldSend, Func<TId, bool> deferSend = null,
+                         Action<TId> onInvalid = null, int maxItems = 4096)
         {
             _prune.Clear();
-            foreach (var id in Pending)
+            EnsureWork();
+
+            int processed = 0;
+            int limit = Math.Max(1, maxItems);
+            while (processed < limit && _work.Count > 0)
             {
+                TId id = _work.Dequeue();
+                if (!Pending.Contains(id)) continue;
+                processed++;
+
                 if (!exists(id))
                 {
-                    _prune.Add(id);
+                    Pending.Remove(id);
                     onInvalid?.Invoke(id);
                     continue;
                 }
                 if (!inArea(id))
                 {
-                    _prune.Add(id);
+                    Pending.Remove(id);
                     onInvalid?.Invoke(id);
                     continue;
                 }
-                if (!shouldSend(id)) { _prune.Add(id); continue; }
-                if (deferSend != null && deferSend(id)) continue;    // skip this round, stays pending
+                if (!shouldSend(id))
+                {
+                    Pending.Remove(id);
+                    continue;
+                }
+                if (deferSend != null && deferSend(id))
+                {
+                    _work.Enqueue(id);
+                    continue;
+                }
+
                 into.Add(id);
+                // A successfully selected dirty entry has now entered this peer's send list.
+                // Leaving it in Pending causes it to be reconsidered forever.
+                Pending.Remove(id);
             }
-            foreach (var id in _prune) Pending.Remove(id);
+
+            return processed;
+        }
+
+        private void EnsureWork()
+        {
+            if (_work.Count != 0 || Pending.Count == 0) return;
+            foreach (TId id in Pending) _work.Enqueue(id);
         }
     }
 }
