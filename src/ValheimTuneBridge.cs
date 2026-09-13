@@ -31,9 +31,9 @@ namespace SmoothServer
             try
             {
                 Cfg.Bind(config);
-                // TargetPortal relies on vanilla ZDOMan.CreateSyncList behavior for its
-                // explicit ForceSendZDO portal advertisements and for portal-travel removal.
-                // Its compatibility guard is refreshed before the selected patches install.
+                // TargetPortal is detected before the selected patches install. Its ForceSendZDO
+                // calls are tracked so ordinary dirty rounds remain optimized while forced portal
+                // advertisements still receive one vanilla sync-list pass.
                 TargetPortalCompat.Refresh(log);
                 Compat.GameVersion = global::Version.CurrentVersion.ToString();
 
@@ -66,29 +66,24 @@ namespace SmoothServer
                 }
                 Compat.ValidationSummary = validation;
 
-                // The explicit allow-list remains authoritative. Runtime preflight is an
-                // additional guard for listed builds, not an automatic future-version bypass:
-                // an unknown build can be structurally similar and still have changed protocol
-                // semantics, so it stays vanilla until a release is verified and listed.
-                // A verified structural surface is sufficient for ordinary hotfixes and
-                // compatible minor updates. The safety switch still fails closed when the
-                // preflight itself fails; KnownGoodBuilds remains a record of explicitly
-                // verified versions and is reported for diagnostics.
-                Compat.ReplacementsAllowed = surfaceOk;
+                // Both conditions are required. The version list is the explicit release
+                // verification record; the structural preflight is the runtime safety check.
+                // A future build therefore stays vanilla until it has been reviewed and listed,
+                // even if its method shapes happen to look compatible.
+                Compat.ReplacementsAllowed = known && surfaceOk;
                 SmoothServerPlugin.ReplacementsAllowed = Compat.ReplacementsAllowed;
 
                 if (!surfaceOk)
                 {
                     log.LogError("[ValheimTuneBridge] runtime compatibility validation failed: " + validation);
                     log.LogWarning("[ValheimTuneBridge] replacement patches are inactive; " +
-                                   "KnownGoodBuilds is only a verification record (" +
-                                   Cfg.KnownGoodBuilds.Value + ")");
+                                   "runtime surface did not pass preflight");
                 }
                 else if (!known)
                 {
                     log.LogWarning("[ValheimTuneBridge] " + Compat.GameVersion +
-                                   " is not listed in KnownGoodBuilds, but the validated runtime " +
-                                   "surface is unchanged; structurally compatible hotfixes remain active");
+                                   " is not listed in KnownGoodBuilds; replacement patches remain " +
+                                   "inactive until this build is explicitly verified");
                 }
 
                 if (SmoothServerPlugin.ConflictingNetworkingModPresent)
@@ -112,6 +107,9 @@ namespace SmoothServer
                 }
 
                 _harmony = new Harmony(SmoothServerPlugin.PluginGuid + ".valheimtune");
+
+                if (TargetPortalCompat.IsLoaded)
+                    TargetPortalCompat.Install(_harmony, log);
 
                 // These are the selected ValheimTune patches. ConstPatches is deliberately
                 // excluded because it overlaps with SmoothServer's stronger implementations.
@@ -190,11 +188,10 @@ namespace SmoothServer
 
         private static void DirtyWatchdog(float dt)
         {
-            if (TargetPortalCompat.IsLoaded)
+            if (TargetPortalCompat.IsLoaded && !TargetPortalCompat.PortalAwareReady)
             {
-                // DirtyPatches intentionally stays on the vanilla CreateSyncList path while
-                // TargetPortal is present; do not let the watchdog mistake that deliberate
-                // bypass for a dead revision hook.
+                // If the ForceSendZDO surface could not be proven, DirtyPatches remains on the
+                // full vanilla path. A portal-aware installation keeps the normal watchdog active.
                 DirtyPatches.Disabled = false;
                 DirtyPatches.WatchdogRecv = 0;
                 DirtyPatches.WatchdogMarks = 0;
