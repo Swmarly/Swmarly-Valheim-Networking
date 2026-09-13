@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Headless-server guard for Heightmap.RebuildRenderMesh.
+// Why it exists: Dedicated servers do not draw terrain, so rebuilding render meshes can be pure wasted work during exploration.
+// Change contract: Never skip collision-relevant work and leave the default off unless measured.
+// -----------------------------------------------------------------------------
 using HarmonyLib;
 
 namespace ValheimTune.Patches
