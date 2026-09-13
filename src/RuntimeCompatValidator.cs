@@ -79,22 +79,6 @@ namespace SmoothServer
             MethodInfo callbacks = RequireMethod(errors, typeof(ZSteamSocket), "RegisterGlobalCallbacks",
                 typeof(void), Type.EmptyTypes);
 
-            MethodInfo syncPosition = null;
-            if (!SmoothServerPlugin.IsServerSide)
-            {
-                syncPosition = AccessTools.Method(typeof(ZSyncTransform), "SyncPosition");
-                if (syncPosition == null)
-                    errors.Add("ZSyncTransform.SyncPosition missing");
-                else
-                {
-                    ParameterInfo[] p = syncPosition.GetParameters();
-                    if (p.Length != 3 || p[0].ParameterType != typeof(ZDO) ||
-                        p[1].ParameterType != typeof(float) ||
-                        p[2].ParameterType != typeof(bool).MakeByRefType() || !p[2].IsOut)
-                        errors.Add("ZSyncTransform.SyncPosition signature is not (ZDO,float,out bool)");
-                }
-            }
-
             MethodInfo receive = RequireMethod(errors, typeof(ZRpc), "Update",
                 typeof(ZRpc.ErrorCode), new[] { typeof(float) });
             MethodInfo create = AccessTools.Method(typeof(ZNetScene), "CreateObjects");
@@ -145,15 +129,36 @@ namespace SmoothServer
             CheckIntIL(errors, send, "ZDOMan.SendZDOs", 2048, 1);
             CheckIntIL(errors, create, "ZNetScene.CreateObjects", 10, 1);
             CheckFloatIL(errors, release, "ZDOMan.ReleaseZDOS", 2f, 1);
-            if (!SmoothServerPlugin.IsServerSide)
+            if (errors.Count == 0)
             {
-                CheckFloatIL(errors, syncPosition, "ZSyncTransform.SyncPosition", 0.2f, 2);
-                CheckFloatIL(errors, syncPosition, "ZSyncTransform.SyncPosition", 2f, 2);
+                detail = "methods/fields/signatures/IL passed (forward-compatible surface)";
+                return true;
+            }
+
+            detail = string.Join("; ", errors.ToArray());
+            return false;
+        }
+
+        internal static bool TryValidateClientMovement(out string detail)
+        {
+            var errors = new List<string>();
+            MethodInfo sync = AccessTools.Method(typeof(ZSyncTransform), "SyncPosition");
+            if (sync == null)
+                errors.Add("ZSyncTransform.SyncPosition missing");
+            else
+            {
+                ParameterInfo[] p = sync.GetParameters();
+                if (p.Length != 3 || p[0].ParameterType != typeof(ZDO) ||
+                    p[1].ParameterType != typeof(float) ||
+                    p[2].ParameterType != typeof(bool).MakeByRefType() || !p[2].IsOut)
+                    errors.Add("ZSyncTransform.SyncPosition signature is not (ZDO,float,out bool)");
+                CheckFloatIL(errors, sync, "ZSyncTransform.SyncPosition", 0.2f, 2);
+                CheckFloatIL(errors, sync, "ZSyncTransform.SyncPosition", 2f, 2);
             }
 
             if (errors.Count == 0)
             {
-                detail = "methods/fields/signatures/IL passed (forward-compatible surface)";
+                detail = "client movement surface passed";
                 return true;
             }
 
@@ -315,7 +320,7 @@ namespace SmoothServer
             {
                 case OperandType.InlineNone: size = 0; break;
                 case OperandType.ShortInlineBrTarget:
-                case OperandType.ShortInlineI:
+                case OperandType.ShortInlineI: size = 1; break;
                 // ShortInlineR is the four-byte operand used by ldc.r4. Treating it as
                 // one byte desynchronizes the scan at the first float and creates the false
                 // "IL could not be read" failure seen on ZSyncTransform.SyncPosition.

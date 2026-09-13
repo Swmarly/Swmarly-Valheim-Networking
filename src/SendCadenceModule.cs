@@ -17,10 +17,14 @@ namespace SmoothServer
 
         private ConfigEntry<float> _sendHz;
         private ConfigEntry<int> _maxPeerSendsPerFrame;
+        private ConfigEntry<float> _maxWorkMs;
 
         internal static bool Active;
         internal static float SendHz = 20f;
         internal static int MaxPeerSendsPerFrame;
+        internal static float MaxWorkMs = 4f;
+        internal static long Calls;
+        internal static long WorkLimited;
 
         private static ZDOMan _owner;
         private static float _sendDebt;
@@ -39,8 +43,13 @@ namespace SmoothServer
                 "Safety cap for peer SendZDOs calls in one frame. 0 = automatic cap (up to four " +
                 "peers per frame, enough to preserve 20Hz for 5-6 peers at a 30Hz server tick). " +
                 "Raise only after measuring frame time.");
+            _maxWorkMs = cfg.Bind("SendCadence", "MaxWorkMs", 4f,
+                "Soft per-frame wall-time budget for this module's SendZDOs calls. 0 = disabled. " +
+                "When reached, unfinished debt is carried forward instead of creating a frame spike. " +
+                "Clamped to 0-20ms.");
             Watch(_sendHz);
             Watch(_maxPeerSendsPerFrame);
+            Watch(_maxWorkMs);
         }
 
         protected override void ApplyPatches()
@@ -61,7 +70,8 @@ namespace SmoothServer
             Active = true;
             Log.LogInfo("[SendCadence] SendHz=" + SendHz.ToString("F1") +
                         " maxPeerSendsPerFrame=" +
-                        (MaxPeerSendsPerFrame > 0 ? MaxPeerSendsPerFrame.ToString() : "auto(4)"));
+                        (MaxPeerSendsPerFrame > 0 ? MaxPeerSendsPerFrame.ToString() : "auto(4)") +
+                        " maxWorkMs=" + (MaxWorkMs <= 0f ? "off" : MaxWorkMs.ToString("F1")));
         }
 
         public override void Disable()
@@ -84,6 +94,7 @@ namespace SmoothServer
         {
             SendHz = Mathf.Clamp(_sendHz.Value, 1f, 60f);
             MaxPeerSendsPerFrame = Math.Max(0, _maxPeerSendsPerFrame.Value);
+            MaxWorkMs = Mathf.Clamp(_maxWorkMs.Value, 0f, 20f);
         }
 
         private static void ResetScheduler()
@@ -133,17 +144,28 @@ namespace SmoothServer
                     : AutomaticCap(peerCount);
                 if (due > cap) due = cap;
                 _sendDebt -= due;
+                int scheduled = due;
+                int completed = 0;
+                float workStart = Time.realtimeSinceStartup;
 
-                for (int i = 0; i < due; i++)
+                for (int i = 0; i < scheduled; i++)
                 {
+                    if (MaxWorkMs > 0f && i > 0 &&
+                        (Time.realtimeSinceStartup - workStart) * 1000f >= MaxWorkMs)
+                    {
+                        WorkLimited++;
+                        break;
+                    }
+
                     if (_cursor >= peerCount) _cursor = 0;
                     var peer = peers[_cursor++];
-                    if (peer == null) continue;
+                    if (peer == null) { completed++; continue; }
 
                     try
                     {
                         // SendZDOs may return void or bool across compatible Valheim releases.
                         __instance.SendZDOs(peer, false);
+                        Calls++;
                     }
                     catch (Exception e)
                     {
@@ -157,7 +179,15 @@ namespace SmoothServer
                             _sendFailures = 0;
                         }
                     }
+                    completed++;
                 }
+
+                // Carry work that did not fit the soft budget back into debt, bounded by the
+                // same four-round cap. This preserves long-run cadence without concentrating
+                // catch-up into one frame.
+                int unfinished = scheduled - completed;
+                if (unfinished > 0)
+                    _sendDebt = Mathf.Min(peerCount * 4f, _sendDebt + unfinished);
             }
 
             __instance.m_nextSendPeer = -1;

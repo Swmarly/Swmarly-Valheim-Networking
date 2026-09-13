@@ -119,6 +119,7 @@ namespace SmoothServer
             var target = AccessTools.Method(typeof(ZDOMan), "SendZDOs");
             if (target == null)
                 throw new Exception("SmoothServer AdaptiveBudget: ZDOMan.SendZDOs not found");
+            PatchGuard.RequireExclusive(target, "ZDOMan.SendZDOs");
 
             var pars = target.GetParameters();
             if (pars.Length != 2 || pars[0].Name != "peer" || pars[1].ParameterType != typeof(bool))

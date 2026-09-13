@@ -56,6 +56,9 @@ namespace SmoothServer
         internal static float BackoffSec = 0.05f;
         internal static int MaxQueuedBytes;            // 0 = never drop
         internal static float ReportIntervalSec = 30f;
+        internal static long TotalDeferrals;
+        internal static int MaxObservedQueueBytes;
+        internal static float MaxObservedQueueAgeMs;
 
         /// <summary>Sentinel for __state: "nothing to evaluate in the finalizer".</summary>
         private const int NoCheck = int.MinValue;
@@ -69,6 +72,7 @@ namespace SmoothServer
             public int Dropped;
             public float LastReport;
             public string LastReason;
+            public float QueueSince;
         }
 
         private static readonly Dictionary<ZSteamSocket, GuardState> States =
@@ -110,6 +114,7 @@ namespace SmoothServer
             var target = AccessTools.Method(typeof(ZSteamSocket), "SendQueuedPackages");
             if (target == null)
                 throw new Exception("SmoothServer SendQueueGuard: ZSteamSocket.SendQueuedPackages not found");
+            PatchGuard.RequireExclusive(target, "ZSteamSocket.SendQueuedPackages");
             if (target.GetParameters().Length != 0)
                 throw new Exception("SmoothServer SendQueueGuard: ZSteamSocket.SendQueuedPackages signature changed " +
                                     "(expected no parameters) - refusing to patch");
@@ -129,6 +134,9 @@ namespace SmoothServer
                 finalizer: new HarmonyMethod(typeof(SendQueueGuardModule), nameof(Finalizer)));
 
             States.Clear();
+            TotalDeferrals = 0;
+            MaxObservedQueueBytes = 0;
+            MaxObservedQueueAgeMs = 0f;
             Active = true;
             Log.LogInfo("[SendQueueGuard] wrapping ZSteamSocket.SendQueuedPackages (vanilla still does the " +
                         "send, so the build's own Steam interface is used): backoff=" +
@@ -169,15 +177,26 @@ namespace SmoothServer
             try
             {
                 var queue = __instance.m_sendQueue;
-                if (queue == null || queue.Count == 0) return true;
+                if (queue == null || queue.Count == 0)
+                {
+                    GuardState existing;
+                    if (States.TryGetValue(__instance, out existing)) existing.QueueSince = 0f;
+                    return true;
+                }
                 if (!__instance.IsConnected()) return true;
 
                 var st = StateFor(__instance);
                 float now = Time.realtimeSinceStartup;
+                if (st.QueueSince <= 0f) st.QueueSince = now;
+                int observedBytes = QueueBytes(queue);
+                if (observedBytes > MaxObservedQueueBytes) MaxObservedQueueBytes = observedBytes;
+                float queueAgeMs = (now - st.QueueSince) * 1000f;
+                if (queueAgeMs > MaxObservedQueueAgeMs) MaxObservedQueueAgeMs = queueAgeMs;
 
                 if (now < st.BlockedUntil)
                 {
                     st.Deferrals++;
+                    TotalDeferrals++;
                     return false;           // still inside the back-off window
                 }
 
@@ -270,6 +289,34 @@ namespace SmoothServer
                 SmoothServerPlugin.Log.LogWarning("[SendQueueGuard] " + Endpoint(s) + " " + reason +
                     " - deferring for " + (BackoffSec * 1000f).ToString("F0") + "ms");
             }
+        }
+
+        private static int QueueBytes(Queue<byte[]> queue)
+        {
+            int bytes = 0;
+            foreach (var b in queue) if (b != null) bytes += b.Length;
+            return bytes;
+        }
+
+        internal struct QueueDiagnostics
+        {
+            public long Deferrals;
+            public int MaxBytes;
+            public float MaxAgeMs;
+        }
+
+        internal static QueueDiagnostics ConsumeDiagnostics()
+        {
+            var d = new QueueDiagnostics
+            {
+                Deferrals = TotalDeferrals,
+                MaxBytes = MaxObservedQueueBytes,
+                MaxAgeMs = MaxObservedQueueAgeMs
+            };
+            TotalDeferrals = 0;
+            MaxObservedQueueBytes = 0;
+            MaxObservedQueueAgeMs = 0f;
+            return d;
         }
 
         private static void Trim(GuardState st, Queue<byte[]> queue, ZSteamSocket s, float now)

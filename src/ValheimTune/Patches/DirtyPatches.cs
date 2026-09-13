@@ -83,7 +83,7 @@ namespace ValheimTune.Patches
             if (man == null) return;
             var peers = man.m_peers;
             for (int i = 0; i < peers.Count; i++)
-                StateFor(peers[i]).Pending.Add(id);
+                StateFor(peers[i]).Enqueue(id);
         }
 
         public static void ResetCounters()
@@ -156,6 +156,7 @@ namespace ValheimTune.Patches
                 },
                 shouldSend: id => peer.ShouldSend(Z(id)),
                 deferSend: id => RelayThrottled(peer, Z(id)),
+                maxItems: Cfg.DirtyMaxItemsPerRound.Value,
                 // A dirty ZDO that leaves this peer's area still has to be removed from that
                 // peer. This is especially important for portal travel: the player's ZDO now
                 // has the destination position, so the old portal peer sees it as out of area.
@@ -196,7 +197,7 @@ namespace ValheimTune.Patches
         {
             if (!__state) return;
             var st = StateFor(peer);
-            for (int i = 0; i < toSync.Count; i++) st.Pending.Add(toSync[i].m_uid);
+            for (int i = 0; i < toSync.Count; i++) st.Enqueue(toSync[i].m_uid);
         }
 
         // R2 relay throttle: a non-prioritized object (fish, drifting items, pieces) that was already

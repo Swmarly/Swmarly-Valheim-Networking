@@ -81,13 +81,26 @@ namespace SmoothServer
                     return handle != 0u;
                 }
 
-                foreach (FieldInfo field in value.GetType().GetFields(InstanceFlags))
+                // Steamworks.NET normally wraps HSteamNetConnection as a struct containing
+                // m_HSteamNetConnection, but forks have exposed it as int/long or renamed the
+                // value field. Only accept a field whose name identifies the connection handle;
+                // never guess from an arbitrary numeric field.
+                FieldInfo[] fields = value.GetType().GetFields(InstanceFlags);
+                for (int i = 0; i < fields.Length; i++)
                 {
-                    if (field.FieldType == typeof(uint))
-                    {
-                        handle = (uint)field.GetValue(value);
-                        return handle != 0u;
-                    }
+                    string name = fields[i].Name;
+                    if (name.IndexOf("HSteamNetConnection", StringComparison.OrdinalIgnoreCase) < 0 &&
+                        name.IndexOf("ConnectionHandle", StringComparison.OrdinalIgnoreCase) < 0 &&
+                        !name.Equals("m_Value", StringComparison.OrdinalIgnoreCase) &&
+                        !name.Equals("Value", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    object raw = fields[i].GetValue(value);
+                    if (raw is uint) handle = (uint)raw;
+                    else if (raw is int && (int)raw > 0) handle = (uint)(int)raw;
+                    else if (raw is long && (long)raw > 0) handle = (uint)(long)raw;
+                    else if (raw is ulong && (ulong)raw > 0) handle = (uint)(ulong)raw;
+                    if (handle != 0u) return true;
                 }
             }
             catch { }

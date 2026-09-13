@@ -255,6 +255,7 @@ namespace SmoothServer
             float worstMs = _frameWorst * 1000f;
 
             var stats = PeerTelemetryModule.Snapshot();
+            var queueDiag = SendQueueGuardModule.ConsumeDiagnostics();
             var names = new List<string>(stats.Length);
             var peersJson = new List<string>(stats.Length);
 
@@ -323,6 +324,9 @@ namespace SmoothServer
                     Json.KV("count", peerCount), Json.KVArrStr("names", names)
                 })),
                 Json.KV("fps", fps), Json.KV("frameAvgMs", avgMs), Json.KV("frameWorstMs", worstMs),
+                Json.KV("sendQueueDeferrals", queueDiag.Deferrals),
+                Json.KV("sendQueueMaxBytes", queueDiag.MaxBytes),
+                Json.KV("sendQueueMaxAgeMs", queueDiag.MaxAgeMs),
                 Json.KV("zdos", zdos), Json.KV("zdosSentPerSec", sentPerSec),
                 Json.KV("zdosRecvPerSec", recvPerSec), Json.KV("sceneObjs", sceneObjs),
                 Json.KVArrRaw("peers", peersJson),
