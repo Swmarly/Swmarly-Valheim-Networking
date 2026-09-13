@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Timing and counter hooks around sync-list creation, ZDO sends, and deserialization.
+// Why it exists: Measurements need to wrap existing work without changing its result, so the bridge can separate sync-list, send, receive, and frame costs.
+// Change contract: Keep instrumentation exception-safe and allocation-light.
+// -----------------------------------------------------------------------------
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
