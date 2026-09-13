@@ -66,6 +66,8 @@ namespace SmoothServer.Net
 
             var target = AccessTools.Method(typeof(ZDOMan), "SendZDOs");
             if (target == null) throw new Exception("SmoothServer ClientNet: ZDOMan.SendZDOs not found");
+            if (target == null) throw new Exception("SmoothServer ClientNet: ZDOMan.SendZDOs not found");
+            PatchGuard.RequireExclusive(target, "ZDOMan.SendZDOs");
             Harmony.Patch(target, transpiler: new HarmonyMethod(typeof(ClientNetModule), nameof(Transpiler)));
 
             var reg = AccessTools.Method(typeof(ZSteamSocket), "RegisterGlobalCallbacks");
