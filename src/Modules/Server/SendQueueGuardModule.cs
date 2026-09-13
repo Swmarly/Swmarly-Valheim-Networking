@@ -110,6 +110,7 @@ namespace SmoothServer
             var target = AccessTools.Method(typeof(ZSteamSocket), "SendQueuedPackages");
             if (target == null)
                 throw new Exception("SmoothServer SendQueueGuard: ZSteamSocket.SendQueuedPackages not found");
+            PatchGuard.RequireExclusive(target, "ZSteamSocket.SendQueuedPackages");
             if (target.GetParameters().Length != 0)
                 throw new Exception("SmoothServer SendQueueGuard: ZSteamSocket.SendQueuedPackages signature changed " +
                                     "(expected no parameters) - refusing to patch");
