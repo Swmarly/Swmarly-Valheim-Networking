@@ -9,6 +9,7 @@ namespace ValheimTune
         public static ConfigEntry<int> MaxPacketsPerPeerPerFrame;
         public static ConfigEntry<bool> FloatingDropsRun, FloatingDropsDelete;
         public static ConfigEntry<bool> DirtySets;
+        public static ConfigEntry<bool> TargetPortalAwareSync;
         public static ConfigEntry<int> DirtyMaxItemsPerRound;
         public static ConfigEntry<float> ReconcileSeconds;
         public static ConfigEntry<int> RelayMinIntervalMs;
@@ -28,6 +29,8 @@ namespace ValheimTune
             FloatingDropsRun = c.Bind("Cleanup", "FloatingDropsRun", false, "One-shot trigger: set true to scan for item drops floating in water. The plugin runs it on the next config reload and sets this back to false. Measured ~50 ms of main-thread stall on a 698k-ZDO world (one 67 ms frame, 2026-09-07).");
             FloatingDropsDelete = c.Bind("Cleanup", "FloatingDropsDelete", false, "When a scan runs with this true, the found items are DELETED (server takes ownership and destroys them; clients see them vanish). Leave false for a dry run that only logs counts.");
             DirtySets        = c.Bind("Sync", "DirtySets", true, "B1: only consider changed ZDOs each round instead of rescanning the whole active area. Full scan on join, zone change, and every ReconcileSeconds.");
+            TargetPortalAwareSync = c.Bind("Sync", "TargetPortalAwareSync", true,
+                "When TargetPortal is loaded, keep dirty-set synchronization for ordinary rounds and route its forced portal sends through one vanilla sync-list pass. Set false for full vanilla sync-list behavior.");
             DirtyMaxItemsPerRound = c.Bind("Sync", "DirtyMaxItemsPerRound", 4096,
                 new ConfigDescription("Maximum queued dirty/full-scan entries inspected for one peer in one SendZDOs call. " +
                     "A bounded FIFO prevents a 600k-ZDO full scan from being walked repeatedly in one frame. " +
