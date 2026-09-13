@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Per-peer FIFO of changed ZDO IDs plus full-scan/reconciliation state.
+// Why it exists: Dirty synchronization avoids repeatedly walking hundreds of thousands of ZDOs, but deferred/out-of-area IDs must remain recoverable so no peer silently misses state.
+// Change contract: Preserve deduplication, bounded draining, deferral, and full-scan rearming.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 
