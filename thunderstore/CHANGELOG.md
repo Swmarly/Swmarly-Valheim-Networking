@@ -1,3 +1,10 @@
+## 0.1.11 — deep networking quality pass
+
+- Added a soft per-frame SendZDOs work budget with bounded carry-forward debt to reduce hitch amplification.
+- Added an explicit exclusive-owner check for the send-drain Harmony seam.
+- Corrected IL operand-width handling for ShortInlineI/ShortInlineBrTarget versus ShortInlineR.
+- Preserved fail-closed validation for unverified Valheim internal changes and TargetPortal compatibility.
+
 ## 0.1.10 — network scheduling and transport hardening
 
 - Replaced synchronized all-peer send sweeps with a bounded fair scheduler that preserves aggregate
