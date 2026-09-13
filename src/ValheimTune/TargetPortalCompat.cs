@@ -135,6 +135,11 @@ namespace ValheimTune
         // Valheim changes the peer UID's integral width between compatible game hotfixes.
         private static void ForceSendPostfix(object[] __args)
         {
+            // Hooks may remain installed while the setting is toggled off. Do not accumulate
+            // force IDs that can never be consumed by the vanilla fallback path.
+            if (!PortalAwareReady)
+                return;
+
             try
             {
                 ZDOID id = ZDOID.None;
@@ -237,7 +242,15 @@ namespace ValheimTune
 
         internal static bool HasPending(ZDOMan.ZDOPeer peer)
         {
-            if (!PortalAwareReady || peer?.m_peer == null)
+            if (!PortalAwareReady)
+            {
+                // Config reload can disable portal-aware sync after events have been recorded.
+                // Drop those markers so re-enabling the feature cannot replay stale events.
+                if (IsLoaded || ForceHooksInstalled)
+                    Reset();
+                return false;
+            }
+            if (peer?.m_peer == null)
                 return false;
 
             long uid = peer.m_peer.m_uid;
