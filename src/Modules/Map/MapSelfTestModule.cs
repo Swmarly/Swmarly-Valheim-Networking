@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Opt-in offline tests for shared-map bitsets, deltas, pins, and serialization.
+// Why it exists: Map synchronization has several independent encoding paths; cheap deterministic checks catch corruption before a live map session does.
+// Change contract: Keep it side-effect free and disabled by default.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.IO;
