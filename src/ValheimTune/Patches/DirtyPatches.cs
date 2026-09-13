@@ -83,7 +83,7 @@ namespace ValheimTune.Patches
             if (man == null) return;
             var peers = man.m_peers;
             for (int i = 0; i < peers.Count; i++)
-                StateFor(peers[i]).Pending.Add(id);
+                StateFor(peers[i]).Enqueue(id);
         }
 
         public static void ResetCounters()
@@ -196,7 +196,7 @@ namespace ValheimTune.Patches
         {
             if (!__state) return;
             var st = StateFor(peer);
-            for (int i = 0; i < toSync.Count; i++) st.Pending.Add(toSync[i].m_uid);
+            for (int i = 0; i < toSync.Count; i++) st.Enqueue(toSync[i].m_uid);
         }
 
         // R2 relay throttle: a non-prioritized object (fish, drifting items, pieces) that was already
