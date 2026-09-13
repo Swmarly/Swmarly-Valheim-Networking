@@ -1,6 +1,6 @@
 # Swmarly Valheim Networking
 
-A server-first BepInEx 5 networking and performance mod for Valheim.
+Server-first BepInEx 5 networking and performance support for Valheim.
 
 ## Features
 
@@ -8,7 +8,7 @@ A server-first BepInEx 5 networking and performance mod for Valheim.
 - Queue back-pressure and per-peer transport diagnostics.
 - Optional negotiated Zstandard compression with vanilla-peer fallback.
 - Dirty-set synchronization for ordinary rounds with full-scan recovery.
-- TargetPortal 1.2.6 hybrid compatibility: optimized ordinary rounds and one controlled vanilla sync-list pass for forced portal advertisements.
+- TargetPortal 1.2.6 hybrid support: optimized ordinary rounds and one controlled vanilla sync-list pass for forced portal advertisements.
 - Server frame, save, GC, object-creation, ownership, and support-physics safeguards.
 - PeerTelemetry, Telemetry, and persistent StatsLog diagnostics.
 
@@ -20,10 +20,10 @@ TargetPortal is a soft dependency. If its ForceSendZDO overloads change, the mod
 
 ## Installation
 
-Install the package contents into BepInEx/plugins/SwmarlyValheimNetworking/. Do not run SmoothServer, ValheimTune, FiresGhettoNetworking, BetterNetworking, ServerSideMap, or Serverside Simulations beside it; overlapping Harmony owners are refused.
+Install the package contents into BepInEx/plugins/SwmarlyValheimNetworking/. Do not run overlapping networking/map mods beside it; foreign Harmony owners are intentionally refused.
 
-The generated config is BepInEx/config/Swmarly.ValheimNetworking.cfg. The full maintenance guide and configuration reference are in the GitHub repository.
+The generated config is BepInEx/config/Swmarly.ValheimNetworking.cfg.
 
 ## Diagnostics
 
-StatsLog writes stats-YYYY-MM-DD.jsonl and events-YYYY-MM-DD.jsonl under BepInEx/config/smoothserver/stats/ by default. Use tools/analyze.py to correlate frame spikes, peer queues, budgets, saves, GC, and ZDO rates.
+StatsLog writes stats-YYYY-MM-DD.jsonl and events-YYYY-MM-DD.jsonl under BepInEx/config/smoothserver/stats/ by default. Use the repository's tools/analyze.py to correlate frame spikes, peer queues, budgets, saves, GC, and ZDO rates.
