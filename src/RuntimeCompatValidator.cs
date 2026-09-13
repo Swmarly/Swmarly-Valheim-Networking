@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Reflection, signature, field, Steam API, and asserted-IL preflight for replacement patches.
+// Why it exists: Harmony target names can survive a game update while parameter order, fields, constants, or protocol assumptions change; structural checks fail closed before replacement code runs.
+// Change contract: Keep checks aligned with real transpilers and never weaken an assertion merely to activate a new build.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Reflection;
