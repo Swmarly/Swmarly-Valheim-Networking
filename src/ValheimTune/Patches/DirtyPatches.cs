@@ -156,6 +156,7 @@ namespace ValheimTune.Patches
                 },
                 shouldSend: id => peer.ShouldSend(Z(id)),
                 deferSend: id => RelayThrottled(peer, Z(id)),
+                maxItems: Cfg.DirtyMaxItemsPerRound.Value,
                 // A dirty ZDO that leaves this peer's area still has to be removed from that
                 // peer. This is especially important for portal travel: the player's ZDO now
                 // has the destination position, so the old portal peer sees it as out of area.
