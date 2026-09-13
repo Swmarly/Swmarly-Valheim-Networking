@@ -1,10 +1,10 @@
 # Modules
 
 The plugin discovers its modules at startup and applies only the side-appropriate features.
-All optional modules and bridge patches are guarded by runtime structural validation. Compatible
-hotfixes and minor updates can remain active even when their version is not listed. If a required
-method, field, signature, Steam API, or asserted IL seam changes, the preflight fails closed and
-replacement features stay vanilla. KnownGoodBuilds records explicitly verified releases.
+All optional modules and bridge patches are guarded by runtime structural validation and the
+explicit KnownGoodBuilds allow-list. Unknown game versions remain vanilla until reviewed and
+listed. If a required method, field, signature, Steam API, or asserted IL seam changes, the
+preflight fails closed and replacement features stay vanilla.
 
 | Area | Selected implementation | Notes |
 | --- | --- | --- |
