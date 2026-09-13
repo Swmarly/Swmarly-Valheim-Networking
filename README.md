@@ -10,7 +10,7 @@ and FiresGhettoNetworking into a single server-first networking/performance stac
 - BepInEx 5.4.2350
 - Linux and Windows dedicated servers
 
-The compatibility gate validates the live method, field, signature, and IL surface at startup. Compatible hotfixes can continue automatically; a fundamental internal or protocol change fails closed and leaves the affected replacements vanilla.
+The compatibility gate validates the live method, field, signature, and IL surface at startup. Only explicitly verified game versions activate replacement patches; unknown versions and fundamental internal or protocol changes fail closed and leave the affected replacements vanilla.
 
 ## What is included
 
