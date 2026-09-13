@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Server module that bounds ZNetScene.CreateObjects work per frame.
+// Why it exists: A large object-creation burst can turn a zone transition into a frame hitch; the transpiler changes only the creation budget and keeps the vanilla path otherwise intact.
+// Change contract: Keep the literal assertion and fail loudly if the target method changes.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
