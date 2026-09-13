@@ -132,9 +132,15 @@ namespace SmoothServer
                     }
                     catch (Exception e)
                     {
-                        // A single changed game method must not prevent the rest of the merged
-                        // plugin from loading. The affected feature falls back to vanilla.
-                        log.LogError("[ValheimTuneBridge] " + type.Name + " disabled: " + e.Message);
+                        // Never leave a partially patched network stack behind. A failed
+                        // transpiler or target resolution fails closed for the entire bridge.
+                        log.LogError("[ValheimTuneBridge] " + type.Name + " failed; bridge disabled: " + e.Message);
+                        _harmony.UnpatchSelf();
+                        _harmony = null;
+                        _started = false;
+                        Active = false;
+                        TargetPortalCompat.Reset();
+                        return;
                     }
                 }
 
@@ -144,6 +150,7 @@ namespace SmoothServer
                     _harmony = null;
                     _started = false;
                     Active = false;
+                    TargetPortalCompat.Reset();
                     log.LogWarning("[ValheimTuneBridge] no selected patches matched this build; bridge disabled");
                     return;
                 }
