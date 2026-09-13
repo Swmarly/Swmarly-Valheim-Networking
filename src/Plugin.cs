@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: BepInEx entrypoint, side resolution, config sync, bridge startup, module discovery, summary logging, update loop, and shutdown.
+// Why it exists: There is intentionally one plugin identity and one lifecycle so server/client behavior and release packaging are predictable.
+// Change contract: Startup order is part of the design: bind config, validate, install bridge, discover/configure modules, apply profiles, then enable patches.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Reflection;
