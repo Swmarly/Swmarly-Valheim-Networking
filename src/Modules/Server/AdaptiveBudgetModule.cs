@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Per-peer adaptive ZDO budget controller driven by valid queue/transport observations.
+// Why it exists: Different peers can have different congestion; a single global budget makes one slow route punish everyone, while missing telemetry must use an explicit static fallback.
+// Change contract: Do not treat zero or unavailable Steam samples as healthy adaptive data.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
