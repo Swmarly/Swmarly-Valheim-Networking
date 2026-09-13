@@ -9,7 +9,6 @@ namespace ValheimTune
         private (int x, int y) _lastZone = (int.MinValue, int.MinValue);
         private float _lastFullScan = float.NegativeInfinity;
         private bool _wasActive;
-        private readonly List<TId> _prune = new List<TId>();
         private readonly Queue<TId> _work = new Queue<TId>();
 
         public HashSet<TId> Pending { get; } = new HashSet<TId>();
@@ -39,7 +38,6 @@ namespace ValheimTune
                          Func<TId, bool> shouldSend, Func<TId, bool> deferSend = null,
                          Action<TId> onInvalid = null, int maxItems = 4096)
         {
-            _prune.Clear();
             EnsureWork();
 
             int processed = 0;
