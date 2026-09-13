@@ -1,3 +1,11 @@
+## 0.1.12 — TargetPortal-aware dirty synchronization
+
+- Kept dirty-set synchronization active for ordinary ZDO rounds when TargetPortal 1.2.6 is loaded.
+- Added runtime-asserted ForceSendZDO hooks for both global and per-peer overloads.
+- Routed each affected portal force-send through one vanilla CreateSyncList pass, preserving TargetPortal advertisements and portal-departure invalid-sector cleanup.
+- Kept the fail-closed fallback: if either ForceSendZDO overload is absent or ambiguous, the full vanilla sync-list path is used.
+- Added [Sync] TargetPortalAwareSync to allow an explicit full-vanilla diagnostic fallback.
+
 ## 0.1.11 — deep networking quality pass
 
 - Added a soft per-frame SendZDOs work budget with bounded carry-forward debt to reduce hitch amplification.
