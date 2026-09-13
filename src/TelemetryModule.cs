@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Lightweight live server frame/ZDO summary logger.
+// Why it exists: A simple frame-time and ZDO-rate baseline is needed to correlate player reports with server hitches without adding another patch.
+// Change contract: It is observation-only and should remain usable during compatibility failures.
+// -----------------------------------------------------------------------------
 using BepInEx.Configuration;
 using UnityEngine;
 
