@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Read-only per-peer transport, queue, ZDO, and Steam-status sampling.
+// Why it exists: Diagnostics must distinguish valid measurements from unavailable API data so AdaptiveBudget and operators do not act on fabricated zeros.
+// Change contract: This module intentionally has no Harmony patches and remains useful when replacement patches are gated off.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
