@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Base lifecycle, side selection, configuration wiring, compatibility gating, and per-module Harmony ownership.
+// Why it exists: Reflection discovery lets one plugin own the module list while isolating failures so an optional feature cannot silently redefine another feature's patch contract.
+// Change contract: New modules must declare side, config, compatibility needs, patch ownership, and safe disable behavior.
+// -----------------------------------------------------------------------------
 using System;
 using BepInEx.Configuration;
 using BepInEx.Logging;
