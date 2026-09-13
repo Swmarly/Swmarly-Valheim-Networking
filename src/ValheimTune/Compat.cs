@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Pure version allow-list predicate used by the global compatibility gate.
+// Why it exists: Version policy should be deterministic and testable without loading Unity or Valheim assemblies.
+// Change contract: Do not make this method infer compatibility from a version prefix.
+// -----------------------------------------------------------------------------
 using System;
 using System.Linq;
 
