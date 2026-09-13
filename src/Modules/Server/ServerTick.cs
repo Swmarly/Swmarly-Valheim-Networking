@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Single per-frame dispatcher for server polling modules.
+// Why it exists: The main plugin owns one Update loop; this file keeps server-only sampling and maintenance in a predictable order.
+// Change contract: Do not add Harmony ownership here; put target-specific behavior in its module.
+// -----------------------------------------------------------------------------
 namespace SmoothServer
 {
     /// <summary>
