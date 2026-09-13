@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Server-side physics/support-cache and nearby-ownership optimizations derived from VPO ideas.
+// Why it exists: Support calculations and release scans can be expensive on large structures, but cached answers must be invalidated whenever the underlying object changes.
+// Change contract: Keep cache invalidation complete and fail closed when required WearNTear/ZDO methods disappear.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;

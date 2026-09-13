@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Pure decision helper for asset-unload deferral.
+// Why it exists: Keeping the policy separate from the Harmony hook makes the risky timing decision testable without Unity.
+// Change contract: Do not put resource destruction or side effects in this helper.
+// -----------------------------------------------------------------------------
 namespace ValheimTune
 {
     // Pure decision logic for G1. No game types, so it unit-tests without the game assembly.

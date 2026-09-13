@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Validated server ownership-release interval tuning.
+// Why it exists: Ownership release affects who may simulate or edit ZDOs; changing it can improve churn but can also cause authority conflicts.
+// Change contract: Only replace the asserted interval literal and preserve Valheim's ownership semantics.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;

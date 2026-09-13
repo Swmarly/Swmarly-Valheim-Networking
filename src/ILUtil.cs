@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Small shared helpers for strict Harmony transpilers.
+// Why it exists: Centralizing operand matching and call replacement prevents each patch from inventing a different interpretation of IL and makes failed matches visible.
+// Change contract: Never turn a failed match into a silent no-op.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;

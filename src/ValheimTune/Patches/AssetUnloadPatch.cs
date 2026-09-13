@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Harmony adapter that applies AssetUnload's defer/allow decision to Game.CollectResources.
+// Why it exists: The policy belongs in AssetUnload; this class should only connect it to the live method and preserve vanilla execution when allowed.
+// Change contract: Fail closed if the target method cannot be resolved.
+// -----------------------------------------------------------------------------
 using HarmonyLib;
 using UnityEngine;
 

@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Debounced file-watcher and main-thread configuration reload pump.
+// Why it exists: Unity/BepInEx callbacks must not mutate configuration from a filesystem thread; changes are coalesced, applied on Update(), and summarized for StatsLog.
+// Change contract: Keep reload delivery main-thread-only and preserve disposal/error handling.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.IO;

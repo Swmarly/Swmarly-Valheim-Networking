@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Optional client-side send-budget and Steam callback tuning.
+// Why it exists: Clients need their own bounded send path, but this must never be installed on the dedicated server or alter vanilla peer compatibility.
+// Change contract: Keep the client-only side gate and exclusive patch checks.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;

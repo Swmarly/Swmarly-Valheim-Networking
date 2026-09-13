@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Persistent JSONL snapshots and event records for multi-day diagnosis.
+// Why it exists: Console lines are transient; structured per-peer and host-correlatable records make intermittent lag measurable after the fact.
+// Change contract: Keep records appendable, flushed, bounded by retention, and backward-readable by tools/analyze.py.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.IO;

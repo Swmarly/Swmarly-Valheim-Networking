@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Tiny counter for repeated object/update churn.
+// Why it exists: Counters keep hot paths cheap while allowing a later diagnostic summary to show whether a mitigation is doing work.
+// Change contract: Keep it allocation-free and resettable.
+// -----------------------------------------------------------------------------
 using System.Collections.Generic;
 using System.Linq;
 

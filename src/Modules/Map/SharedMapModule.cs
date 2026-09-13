@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Optional routed-RPC shared-map coordinator for map exploration and pins.
+// Why it exists: The module synchronizes optional map state without changing Valheim's normal world/ZDO protocol and restricts sends to authorized mod peers.
+// Change contract: Preserve vanilla behavior when disabled, when a peer has not completed the handshake, or when a map payload fails validation.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.IO;

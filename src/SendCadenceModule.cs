@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Fair deadline-based per-peer scheduler for ZDO send rounds.
+// Why it exists: Calling every peer in one cadence tick creates serialization/socket bursts; per-peer deadlines and bounded catch-up spread equivalent work across frames.
+// Change contract: Do not increase aggregate rate accidentally or starve a peer; preserve bounded debt and observability.
+// -----------------------------------------------------------------------------
 using System;
 using BepInEx.Configuration;
 using HarmonyLib;

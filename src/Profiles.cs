@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Server-selected tuning presets and their controlled setting overrides.
+// Why it exists: Presets make a repeatable baseline possible without hiding which values actually reached modules; Custom leaves individual config values authoritative.
+// Change contract: When adding a setting, decide explicitly whether every profile should override it.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;

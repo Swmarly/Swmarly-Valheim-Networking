@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Server-side bounded ZDO send-window transpiler.
+// Why it exists: A high-water byte limit controls bulk synchronization work per peer and prevents one send call from monopolizing a frame.
+// Change contract: This shares the SendZDOs seam with AdaptiveBudget; preserve exclusive-owner expectations and literal checks.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;

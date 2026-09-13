@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Optional client-side position interpolation and short extrapolation.
+// Why it exists: This changes presentation only, so it can make remote movement look steadier without changing server authority or the wire protocol.
+// Change contract: It is the most version-sensitive client patch; require exact signature/IL validation and prefer disabled over guessed behavior.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;

@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Server-side Steam networking rate/buffer configuration and per-connection application.
+// Why it exists: Dedicated servers and clients initialize different Steamworks interfaces; using the wrong one can look like a successful no-op.
+// Change contract: Record native failures and never claim a setting was applied without a successful read/write path.
+// -----------------------------------------------------------------------------
 using System;
 using System.Runtime.InteropServices;
 using BepInEx.Configuration;

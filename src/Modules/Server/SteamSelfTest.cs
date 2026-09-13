@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Opt-in diagnostic that reports which Steam interfaces and socket calls the live ZSteamSocket IL uses.
+// Why it exists: Steam API ownership differs between client and dedicated-server assemblies; this makes an update's seam visible before enabling tuning.
+// Change contract: It must observe only and never alter the game.
+// -----------------------------------------------------------------------------
 using System;
 using System.Reflection;
 using System.Text;

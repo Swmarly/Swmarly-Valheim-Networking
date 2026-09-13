@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Reusable bounded heap for selecting the highest-value sync candidates.
+// Why it exists: The heap gives predictable memory/time bounds during large joins without changing the wire format.
+// Change contract: Keep comparator semantics aligned with ServerSortSendZDOS.
+// -----------------------------------------------------------------------------
 using System;
 
 namespace ValheimTune

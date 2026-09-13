@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Server frame-rate target policy and reassertion logic.
+// Why it exists: A configured target is only useful if it is applied after Valheim initializes its frame settings and reapplied when live config changes.
+// Change contract: This is a timing policy, not a network-rate control; do not confuse it with SendCadence.
+// -----------------------------------------------------------------------------
 using BepInEx.Configuration;
 using UnityEngine;
 

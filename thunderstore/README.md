@@ -1,34 +1,29 @@
 # Swmarly Valheim Networking
 
-Unified server-first Valheim networking and performance tuning.
+Server-first BepInEx 5 networking and performance support for Valheim.
 
 ## Features
 
-- Adaptive per-peer send budgets and queue recovery
-- Fair paced per-peer synchronization with bounded catch-up work
-- Zstandard compression with vanilla-peer fallback
-- Dirty-set synchronization, relay throttling, and Top-K selection
-- Receive caps and persistent diagnostics
-- Steam send-rate, buffer, and low-latency tuning
-- Dedicated-server frame, save, GC, WearNTear, and ownership tuning
-- Optional client send budget, shared map, interpolation, and prediction
-- Floating item/log diagnostics and cleanup
+- Fair per-peer ZDO scheduling and bounded bulk send budgets.
+- Queue back-pressure and per-peer transport diagnostics.
+- Optional negotiated Zstandard compression with vanilla-peer fallback.
+- Dirty-set synchronization for ordinary rounds with full-scan recovery.
+- TargetPortal 1.2.6 hybrid support: optimized ordinary rounds and one controlled vanilla sync-list pass for forced portal advertisements.
+- Server frame, save, GC, object-creation, ownership, and support-physics safeguards.
+- PeerTelemetry, Telemetry, and persistent StatsLog diagnostics.
+
+## Compatibility
+
+Version 0.1.12 is verified for Valheim 1.0.7/network 39 and Valheim 1.0.12/network 40 with BepInEx 5.4.2350. Unknown or structurally changed builds remain vanilla until reviewed and added to the allow-list.
+
+TargetPortal is a soft dependency. If its ForceSendZDO overloads change, the mod safely falls back to full vanilla sync-list handling. Set Sync/TargetPortalAwareSync=false for the same diagnostic fallback explicitly.
 
 ## Installation
 
-Install `SwmarlyValheimNetworking.dll` and its bundled managed dependencies on the dedicated
-server under `BepInEx/plugins/SwmarlyValheimNetworking/`. Vanilla clients can join by default.
+Install the package contents into BepInEx/plugins/SwmarlyValheimNetworking/. Do not run overlapping networking/map mods beside it; foreign Harmony owners are intentionally refused.
 
-Remove SmoothServer, ValheimTune, FiresGhettoNetworking, BetterNetworking, ServerSideMap, and
-Serverside Simulations before enabling this package. Those mods patch overlapping Valheim
-networking/map methods.
+The generated config is BepInEx/config/Swmarly.ValheimNetworking.cfg.
 
-Validated target: Valheim 1.0.12 / network version 40 / BepInEx 5.4.2350. Compatible hotfixes are checked by live structural validation; fundamental changes fail closed.
-
- 
 ## Diagnostics
 
-Peer telemetry records the Steam status source or failure reason, per-peer RTT/quality,
-pending reliable and unreliable bytes, in-flight reliable bytes, socket queue, ZDO queue,
-adaptive target, congestion state, and compression state. Missing Steam status falls back to a
-static budget rather than being treated as adaptive data.
+StatsLog writes stats-YYYY-MM-DD.jsonl and events-YYYY-MM-DD.jsonl under BepInEx/config/smoothserver/stats/ by default. Use the repository's tools/analyze.py to correlate frame spikes, peer queues, budgets, saves, GC, and ZDO rates.
