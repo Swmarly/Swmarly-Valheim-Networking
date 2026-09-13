@@ -22,6 +22,10 @@ Update ticks Telemetry, FrameRate, Compression, SharedMap, ServerModules, Valhei
 
 FeatureModule owns per-module config, side checks, compatibility checks, a private Harmony instance, status reporting, and live Enabled changes. A module must leave a clear vanilla fallback and throw on target/IL mismatch.
 
+### Harmony state invariant
+
+Harmony passes prefix state to a postfix through one parameter named __state. Do not add a second pseudo-state parameter such as __portalVanilla; Harmony will try to resolve it as an original-method argument and the patch will fail. DirtyPatches uses one SyncListState value containing both FullScan and PortalVanilla. When both flags are true, the postfix must consume the TargetPortal marker and still refill the dirty queue from the vanilla full-scan list.
+
 ## Patch ownership
 
 | Seam | Internal owner(s) | Purpose |
