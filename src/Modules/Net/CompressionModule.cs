@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Negotiated optional Zstandard framing for supported peers.
+// Why it exists: Compression can reduce bandwidth only after both endpoints agree; framed data must never be passed to vanilla package parsing after a failed decode.
+// Change contract: Keep handshake, frame tags, disconnect-on-malformed-input, and vanilla fallback behavior together.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.IO;
