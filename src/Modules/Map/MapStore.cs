@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Bounded in-memory map bitsets, pins, validation, delta/full serialization, and persistence helpers.
+// Why it exists: Map RPC data is client-controlled input; strict size/count/finite-value limits protect the server from allocations and malformed state.
+// Change contract: Any format change needs compatibility/versioning thought and tests for truncated or oversized payloads.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.IO;
