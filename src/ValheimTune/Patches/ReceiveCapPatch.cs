@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Optional per-peer ZRpc receive-drain cap.
+// Why it exists: One busy connection can otherwise consume an entire frame; leaving the remaining packets queued spreads work while preserving ordering.
+// Change contract: Keep zero as vanilla behavior and do not drop packets.
+// -----------------------------------------------------------------------------
 using System;
 using System.IO;
 using HarmonyLib;
