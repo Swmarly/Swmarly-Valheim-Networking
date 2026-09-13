@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Both-end Steam socket low-latency configuration and readback.
+// Why it exists: Nagle/latency settings are process/connection concerns and must use the Steam interface initialized on that side of the game.
+// Change contract: Keep client/server API separation and treat refused settings as unavailable, not successfully applied.
+// -----------------------------------------------------------------------------
 using System;
 using System.Runtime.InteropServices;
 using BepInEx.Configuration;
