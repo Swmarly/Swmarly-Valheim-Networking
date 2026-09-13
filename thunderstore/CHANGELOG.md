@@ -2,6 +2,7 @@
 
 - Added a soft per-frame SendZDOs work budget with bounded carry-forward debt to reduce hitch amplification.
 - Added an explicit exclusive-owner check for the send-drain Harmony seam.
+- Added queue-age/deferral metrics to StatsLog and tolerant typed Steam connection-handle extraction.
 - Corrected IL operand-width handling for ShortInlineI/ShortInlineBrTarget versus ShortInlineR.
 - Preserved fail-closed validation for unverified Valheim internal changes and TargetPortal compatibility.
 
