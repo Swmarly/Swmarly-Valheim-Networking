@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Bounded protection and diagnostics around the Steam send drain.
+// Why it exists: A faulty or overloaded queue should not crash the server frame, but reliable/control traffic must not be discarded casually and every drop/trim must be observable.
+// Change contract: Keep exception classification narrow, record queue age/bytes, and treat trimming as a lossy emergency option.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
