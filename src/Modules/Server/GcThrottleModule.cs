@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Policy for delaying expensive unused-asset collection when players are active.
+// Why it exists: Unity resource collection can create multi-hundred-millisecond hitches; deferral reduces surprise stalls but must eventually run to avoid unbounded retention.
+// Change contract: Never skip collection permanently and keep an explicit backstop.
+// -----------------------------------------------------------------------------
 using System;
 using BepInEx.Configuration;
 using HarmonyLib;
