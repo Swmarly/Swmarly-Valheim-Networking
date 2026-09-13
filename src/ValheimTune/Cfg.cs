@@ -9,6 +9,7 @@ namespace ValheimTune
         public static ConfigEntry<int> MaxPacketsPerPeerPerFrame;
         public static ConfigEntry<bool> FloatingDropsRun, FloatingDropsDelete;
         public static ConfigEntry<bool> DirtySets;
+        public static ConfigEntry<int> DirtyMaxItemsPerRound;
         public static ConfigEntry<float> ReconcileSeconds;
         public static ConfigEntry<int> RelayMinIntervalMs;
         public static ConfigEntry<string> KnownGoodBuilds;
@@ -22,11 +23,15 @@ namespace ValheimTune
         public static void Bind(ConfigFile c)
         {
             LogIntervalSeconds = c.Bind("Measure", "LogIntervalSeconds", 10, "How often to print the stats line. 0 disables.");
-            SendWindowBytes  = c.Bind("Sync", "SendWindowBytes", 10240, new ConfigDescription("Per-peer bytes in flight before the server stops queueing ZDO data. Vanilla 10240. Try 32768. Also sizes each iteration of the disconnect flush.", new AcceptableValueRange<int>(4096, 1048576)));
+            SendWindowBytes  = c.Bind("Sync", "SendWindowBytes", 10240, new ConfigDescription("Legacy fallback size used to derive TopK when TopK=0; the active SendBudget high-water mark controls ZDO budgeting. Vanilla 10240. Try 32768.", new AcceptableValueRange<int>(4096, 1048576)));
             MaxPacketsPerPeerPerFrame = c.Bind("Receive", "MaxPacketsPerPeerPerFrame", 0, "Stop draining one peer's socket after this many packets in a frame; the rest wait in Steam's queue. 0 = vanilla (unlimited). Try 64.");
             FloatingDropsRun = c.Bind("Cleanup", "FloatingDropsRun", false, "One-shot trigger: set true to scan for item drops floating in water. The plugin runs it on the next config reload and sets this back to false. Measured ~50 ms of main-thread stall on a 698k-ZDO world (one 67 ms frame, 2026-09-07).");
             FloatingDropsDelete = c.Bind("Cleanup", "FloatingDropsDelete", false, "When a scan runs with this true, the found items are DELETED (server takes ownership and destroys them; clients see them vanish). Leave false for a dry run that only logs counts.");
             DirtySets        = c.Bind("Sync", "DirtySets", true, "B1: only consider changed ZDOs each round instead of rescanning the whole active area. Full scan on join, zone change, and every ReconcileSeconds.");
+            DirtyMaxItemsPerRound = c.Bind("Sync", "DirtyMaxItemsPerRound", 4096,
+                new ConfigDescription("Maximum queued dirty/full-scan entries inspected for one peer in one SendZDOs call. " +
+                    "A bounded FIFO prevents a 600k-ZDO full scan from being walked repeatedly in one frame. " +
+                    "Unfinished entries remain queued.", new AcceptableValueRange<int>(256, 32768)));
             ReconcileSeconds = c.Bind("Sync", "ReconcileSeconds", 30f, "Safety-net full scan interval per peer when DirtySets is on.");
             RelayMinIntervalMs = c.Bind("Sync", "RelayMinIntervalMs", 0, "Do not re-send a non-prioritized object (fish, items, pieces) to the same peer more often than this, in ms. 0 = vanilla. 200 = 5 Hz; fish and drifting items are the bulk of idle traffic at a big base.");
             KnownGoodBuilds = c.Bind("Compat", "KnownGoodBuilds", "1.0.7,1.0.12", "Game versions (Version.CurrentVersion) this build was verified against. Comma-separated. The shipped 0.1.8 defaults include Valheim 1.0.12/network 40.");
