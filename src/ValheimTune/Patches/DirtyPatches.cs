@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Dirty revision hooks and the optimized CreateSyncList replacement, including TargetPortal hybrid handling.
+// Why it exists: Normal rounds use changed-ZDO queues; full scans still re-arm after joins/zone changes/reconciliation, and TargetPortal forced sends receive one controlled vanilla pass so portal advertisements and departure cleanup survive.
+// Change contract: This is a high-risk sync seam: preserve invalid-sector removal, force-send handling, watchdog recovery, and strict fallback.
+// -----------------------------------------------------------------------------
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
