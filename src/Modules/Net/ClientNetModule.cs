@@ -72,6 +72,8 @@ namespace SmoothServer.Net
 
             var reg = AccessTools.Method(typeof(ZSteamSocket), "RegisterGlobalCallbacks");
             if (reg == null) throw new Exception("SmoothServer ClientNet: ZSteamSocket.RegisterGlobalCallbacks not found");
+            if (reg == null) throw new Exception("SmoothServer ClientNet: ZSteamSocket.RegisterGlobalCallbacks not found");
+            PatchGuard.RequireExclusive(reg, "ZSteamSocket.RegisterGlobalCallbacks");
             Harmony.Patch(reg, postfix: new HarmonyMethod(typeof(ClientNetModule), nameof(RegisterGlobalCallbacksPostfix)));
 
             Active2 = true;
