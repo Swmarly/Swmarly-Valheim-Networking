@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Runtime TargetPortal detector and ForceSendZDO event tracker.
+// Why it exists: TargetPortal needs forced portal records and portal-travel cleanup, but disabling all dirty synchronization wastes the optimization. Tracking global/per-peer force calls lets only affected peers use one vanilla CreateSyncList pass.
+// Change contract: Require both overload shapes; if the API changes, use full vanilla sync lists rather than guessing.
+// -----------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
 using System.Reflection;
