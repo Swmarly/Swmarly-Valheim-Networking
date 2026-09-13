@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Shared configuration entries used by the ValheimTune bridge and its patches.
+// Why it exists: These values are read by several patch classes, so one binding location prevents drift between the config file, runtime behavior, and diagnostics.
+// Change contract: Update descriptions whenever semantics or defaults change; descriptions are part of the operator contract.
+// -----------------------------------------------------------------------------
 using BepInEx.Configuration;
 
 namespace ValheimTune
