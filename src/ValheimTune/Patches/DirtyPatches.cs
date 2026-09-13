@@ -115,12 +115,19 @@ namespace ValheimTune.Patches
         private static readonly List<ZDOID> s_ids = new List<ZDOID>(256);
         private static int s_relayMinMs;
 
+        // Harmony provides one __state object from a prefix to its postfix. Keep both decisions
+        // together so the TargetPortal marker can be consumed without losing the full-scan refill.
+        private struct SyncListState
+        {
+            public bool FullScan;
+            public bool PortalVanilla;
+        }
+
         [HarmonyPatch(typeof(ZDOMan), nameof(ZDOMan.CreateSyncList))]
         [HarmonyPrefix]
-        private static bool CreateSyncListPrefix(ZDOMan __instance, ZDOMan.ZDOPeer peer, List<ZDO> toSync, out bool __state, out bool __portalVanilla)
+        private static bool CreateSyncListPrefix(ZDOMan __instance, ZDOMan.ZDOPeer peer, List<ZDO> toSync, out SyncListState __state)
         {
-            __state = false;                       // true = this round was a full scan; postfix refills
-            __portalVanilla = false;               // true = a TargetPortal force is handled by vanilla below
+            __state = default(SyncListState);      // full-scan and portal-vanilla decisions share one Harmony state object
             // One GetZDO lookup per id per call instead of one per Drain lambda (up to four). Local,
             // not a static field: reset every call anyway, and a bare static ZDOID field would force
             // DirtyPatches to eagerly resolve the game assembly on class load (breaks pure-logic unit
@@ -142,21 +149,21 @@ namespace ValheimTune.Patches
             bool needsFull = st.NeedsFullScan((zone.x, zone.y), Time.time, Cfg.ReconcileSeconds.Value, active);
             if (!active)
             {
-                __portalVanilla = portalForced;
+                __state.PortalVanilla = portalForced;
                 return true;
             }
 
             if (needsFull)
             {
                 FullScans++;
-                __state = true;
-                __portalVanilla = portalForced;
+                __state.FullScan = true;
+                __state.PortalVanilla = portalForced;
                 return true;                       // vanilla path, postfix captures its candidates
             }
 
             if (portalForced)
             {
-                __portalVanilla = true;
+                __state.PortalVanilla = true;
                 return true;                       // preserve TargetPortal's ForceSendZDO semantics
             }
 
@@ -213,14 +220,13 @@ namespace ValheimTune.Patches
 
         [HarmonyPatch(typeof(ZDOMan), nameof(ZDOMan.CreateSyncList))]
         [HarmonyPostfix]
-        private static void CreateSyncListPostfix(ZDOMan.ZDOPeer peer, List<ZDO> toSync, bool __state, bool __portalVanilla)
+        private static void CreateSyncListPostfix(ZDOMan.ZDOPeer peer, List<ZDO> toSync, SyncListState __state)
         {
-            if (__portalVanilla)
-            {
+            // Consume the forced-send marker even when this invocation also performed a full
+            // scan. The full-scan candidates still need to refill the dirty queue.
+            if (__state.PortalVanilla)
                 TargetPortalCompat.Consume(peer);
-                return;
-            }
-            if (!__state) return;
+            if (!__state.FullScan) return;
             var st = StateFor(peer);
             for (int i = 0; i < toSync.Count; i++) st.Enqueue(toSync[i].m_uid);
         }
