@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Diagnostic/optional cleanup scanner for floating item drops.
+// Why it exists: Large worlds can accumulate expensive disposable objects, but deletion is destructive and must be an explicit operator action.
+// Change contract: Keep dry-run behavior separate from server-authoritative deletion.
+// -----------------------------------------------------------------------------
 using System.Collections.Generic;
 using UnityEngine;
 
