@@ -1,3 +1,8 @@
+// -----------------------------------------------------------------------------
+// File role: Optional bounded Top-K candidate selection for large sync lists.
+// Why it exists: Sorting every candidate is expensive during joins/reconciliation; the heap keeps the best candidates without changing ordinary dirty rounds.
+// Change contract: Preserve vanilla distance/priority semantics and let disabled/unsupported builds use vanilla sorting.
+// -----------------------------------------------------------------------------
 using System;
 using HarmonyLib;
 using UnityEngine;
